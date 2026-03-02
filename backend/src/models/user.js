@@ -26,6 +26,23 @@ const User = {
             FROM users u 
             JOIN roles r ON u.roles_id = r.id`;
         db.query(sql, callback);
+    },
+
+    // --- NUEVOS MÉTODOS PARA UBICACIÓN ---
+    
+    // Nota: Si db.query no devuelve promesas, usa callbacks aquí también por consistencia
+    updateLocation: (userId, lat, lng, callback) => {
+        const sql = 'UPDATE users SET latitude = ?, longitude = ? WHERE id = ?';
+        db.query(sql, [lat, lng, userId], callback);
+    },
+
+    getPatientByCaregiver: (caregiverId, callback) => {
+        const sql = `
+            SELECT id, first_name, last_name, latitude, longitude, phone 
+            FROM users 
+            WHERE cuidador_id = ?
+            LIMIT 1`;
+        db.query(sql, [caregiverId], callback);
     }
 };
 
