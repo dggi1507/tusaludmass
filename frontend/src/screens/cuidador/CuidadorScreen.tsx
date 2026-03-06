@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TouchableOpacity, Dimensions, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { API_BASE_URL } from '../../config/api';
 
 const { width } = Dimensions.get('window');
 
@@ -13,7 +14,7 @@ export default function CuidadorScreen({ user }: any) {
   const fetchLocation = async () => {
     try {
       // Daniel: Volvemos a la forma dinámica para que reconozca a cualquier cuidador
-      const url = `http://192.168.1.28:3000/api/patients/location/${user.id}`;
+      const url = `${API_BASE_URL}/patients/location/${user.id}`;
       console.log("Daniel - Consultando URL:", url); // Verifica que el ID sea 3
 
       const response = await fetch(url);
