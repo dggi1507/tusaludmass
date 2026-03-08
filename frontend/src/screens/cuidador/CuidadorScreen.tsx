@@ -14,7 +14,7 @@ export default function CuidadorScreen({ user }: any) {
   const fetchLocation = async () => {
     try {
       // Daniel: Volvemos a la forma dinámica para que reconozca a cualquier cuidador
-      const url = `${API_BASE_URL}/patients/location/${user.id}`;
+      const url = `${API_BASE_URL}/patients/location/${user.roleId}`;
       console.log("Daniel - Consultando URL:", url); // Verifica que el ID sea 3
 
       const response = await fetch(url);
@@ -180,4 +180,3 @@ const styles = StyleSheet.create({
   markerContainer: { backgroundColor: 'white', borderRadius: 20, padding: 2, elevation: 5 },
   noDataText: { color: '#666', fontStyle: 'italic' }
 });
-a
