@@ -59,6 +59,21 @@ const User = {
             WHERE cuidador_id = ?
             LIMIT 1`;
         db.query(sql, [caregiverId], callback);
+    },
+
+    // MÉTODO PARA ACTUALIZAR DATOS DEL USUARIO
+    update: (userId, userData, callback) => {
+        const { first_name, last_name, email, phone } = userData;
+        
+        // Si el correo cambia, actualizamos el username automáticamente
+        const username = email ? email.split('@')[0] : null;
+
+        const sql = `
+            UPDATE users 
+            SET first_name = ?, last_name = ?, email = ?, username = ?, phone = ?
+            WHERE id = ?`;
+
+        db.query(sql, [first_name, last_name, email, username, phone, userId], callback);
     }
 };
 

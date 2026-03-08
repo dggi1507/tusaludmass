@@ -108,3 +108,21 @@ export const register = async (req, res) => {
         res.status(500).json({ message: "Error en el servidor", details: error.message });
     }
 };
+
+export const updateUser = (req, res) => {
+    const { id } = req.params; // Obtenemos el ID de la URL
+    const userData = req.body;
+
+    User.update(id, userData, (err, result) => {
+        if (err) {
+            console.error('Error al actualizar:', err);
+            return res.status(500).json({ success: false, message: 'Error al actualizar datos' });
+        }
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+        }
+
+        res.json({ success: true, message: 'Datos actualizados correctamente' });
+    });
+};
