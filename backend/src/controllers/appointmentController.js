@@ -24,3 +24,13 @@ export const deleteAppointment = (req, res) => {
         res.json({ success: true, message: "Cita eliminada" });
     });
 };
+
+import Patient from '../models/patientModel.js';
+
+export const getAppointmentsByPatient = (req, res) => {
+    const { id } = req.params; // Recibe el ID del paciente desde la URL
+    Patient.getAppointments(id, (err, results) => {
+        if (err) return res.status(500).json({ success: false, error: err });
+        res.json(results); // Envía las citas al celular
+    });
+};
