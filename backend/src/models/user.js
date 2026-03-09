@@ -17,6 +17,15 @@ const User = {
             JOIN roles r ON u.roles_id = r.id 
             WHERE u.link_code = ? AND u.state = 1`;
         db.query(sql, [code], callback);
+    },
+
+    findById: (id, callback) => {
+        const sql = `
+            SELECT u.*, r.name as role_name
+            FROM users u
+            LEFT JOIN roles r ON u.roles_id = r.id
+            WHERE u.id = ?`;
+        db.query(sql, [id], callback);
     }
 };
 

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors"; 
 import authRoutes from './routes/authRoutes.js'; // CAMBIO: Usamos import y añadimos .js
+import dataRoutes from './routes/dataRoutes.js';
 
 const app = express();
 
@@ -10,6 +11,7 @@ app.use(express.json());
 
 // Rutas
 app.use('/api', authRoutes); // Conectamos tus rutas de login
+app.use('/api', dataRoutes);
 
 // Ruta de prueba
 app.get('/api/saludo', (req, res) => {

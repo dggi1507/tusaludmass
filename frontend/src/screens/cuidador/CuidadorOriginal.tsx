@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { API_BASE_URL } from '../../config/api';
 import type { CuidadorUser, PatientLinked, NotificacionEmergente } from '../../types/database';
 
-// Funciones de ayuda existentes
 function formatAlarmTime(alarm_datetime: string): string {
   try {
     const d = new Date(alarm_datetime);
@@ -24,28 +21,34 @@ function getDisplayName(user: { first_name?: string | null; last_name?: string |
   return name || user.username || '';
 }
 
+const NOTIFICACIONES_EJEMPLO: NotificacionEmergente[] = [
+  { id: 1, type: 'toma', title: 'Toma', detail: 'Medicamento', alarm_datetime: new Date().toISOString(), patient_medicine_id: 1 },
+  { id: 2, type: 'cita', title: 'Cita', detail: '', alarm_datetime: new Date().toISOString(), appointment_id: 1 },
+];
+
+// Función para generar los días del calendario de la semana actual
 function generateCalendarDays(): { num: string; label: string; isToday: boolean }[] {
   const today = new Date();
   const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay());
+  startOfWeek.setDate(today.getDate() - today.getDay()); // Domingo como inicio
+
   const days = [];
   const dayLabels = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+
   for (let i = 0; i < 7; i++) {
     const date = new Date(startOfWeek);
     date.setDate(startOfWeek.getDate() + i);
+    const isToday = date.toDateString() === today.toDateString();
     days.push({
       num: date.getDate().toString(),
       label: dayLabels[i],
-      isToday: date.toDateString() === today.toDateString(),
+      isToday,
     });
   }
   return days;
 }
 
 const DIAS_CALENDARIO = generateCalendarDays();
-const NOTIFICACIONES_EJEMPLO: NotificacionEmergente[] = [
-  { id: 1, type: 'toma', title: 'Toma', detail: 'Medicamento', alarm_datetime: new Date().toISOString(), patient_medicine_id: 1 },
-];
 
 export interface CuidadorScreenProps {
   user: CuidadorUser;
@@ -55,42 +58,7 @@ export interface CuidadorScreenProps {
 
 export default function CuidadorScreen({ user, patient = null, notificaciones = NOTIFICACIONES_EJEMPLO }: CuidadorScreenProps) {
   const userName = getDisplayName(user);
-  
-  // --- LÓGICA DE MAPAS ADICIONADA ---
-  const [pacienteInfo, setPacienteInfo] = useState<any>(null);
-  const [loadingMap, setLoadingMap] = useState(true);
-
-  const fetchLocation = async () => {
-    try {
-      // Usamos el roleId del usuario para buscar la ubicación del paciente vinculado
-      const url = `${API_BASE_URL}/patients/location/${user.roles_id}`;
-      const response = await fetch(url);
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        setPacienteInfo(result.data);
-      }
-    } catch (error) {
-      console.error("Error obteniendo ubicación:", error);
-    } finally {
-      setLoadingMap(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchLocation();
-    const interval = setInterval(fetchLocation, 15000); // Actualización cada 15 segundos
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleCall = () => {
-    const phone = pacienteInfo?.phone || (patient as any)?.phone;
-    if (phone) {
-      Linking.openURL(`tel:${phone}`);
-    }
-  };
-
-  const currentPatientName = pacienteInfo?.first_name || (patient ? getDisplayName(patient) : 'Paciente');
+  const patientName = patient ? getDisplayName(patient) : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -127,13 +95,15 @@ export default function CuidadorScreen({ user, patient = null, notificaciones = 
 
           {notificaciones.map((notif) => (
             <View key={notif.id} style={styles.timelineItem}>
-              <View style={[styles.pillIcon, { backgroundColor: '#2196F3' }]}>
-                {notif.type === 'toma' ? (
+              {notif.type === 'toma' ? (
+                <View style={[styles.pillIcon, { backgroundColor: '#2196F3' }]}>
                   <FontAwesome5 name="pills" size={14} color="#FFF" />
-                ) : (
-                  <Ionicons name="calendar" size={14} color="#FFF" />
-                )}
-              </View>
+                </View>
+              ) : (
+                <View style={[styles.dot, { backgroundColor: '#2196F3' }]}>
+                  <Ionicons name="calendar" size={12} color="#FFF" />
+                </View>
+              )}
               <View style={styles.activityInfo}>
                 <View style={styles.activityRow}>
                   <Text style={styles.activityTitle}>{notif.title}</Text>
@@ -150,43 +120,19 @@ export default function CuidadorScreen({ user, patient = null, notificaciones = 
           ))}
         </View>
 
-        {/* --- SECCIÓN DE MAPA INTEGRADA --- */}
-        <Text style={styles.sectionLabel}>Ubicación de {currentPatientName}</Text>
+        <Text style={styles.sectionLabel}>
+          {patientName ? `Ubicación de ${patientName}` : 'Ubicación del paciente'}
+        </Text>
         <View style={styles.mapContainer}>
-          {loadingMap ? (
-            <ActivityIndicator size="large" color="#2196F3" />
-          ) : pacienteInfo?.latitude ? (
-            <MapView
-              provider={PROVIDER_GOOGLE}
-              style={StyleSheet.absoluteFillObject}
-              region={{
-                latitude: parseFloat(pacienteInfo.latitude),
-                longitude: parseFloat(pacienteInfo.longitude),
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
-              }}
-            >
-              <Marker
-                coordinate={{
-                  latitude: parseFloat(pacienteInfo.latitude),
-                  longitude: parseFloat(pacienteInfo.longitude),
-                }}
-                title={currentPatientName}
-                description="Ubicación actual"
-              >
-                <View style={styles.markerWrapper}>
-                  <Ionicons name="person-circle" size={40} color="#2196F3" />
-                </View>
-              </Marker>
-            </MapView>
-          ) : (
-            <Text style={{ color: '#666', fontStyle: 'italic' }}>Buscando señal GPS...</Text>
-          )}
-
-          <TouchableOpacity style={styles.locationOverlay} onPress={handleCall}>
+          <Image
+            source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/e/e0/Google_Maps_icon_%282020%29.png' }}
+            style={styles.mapPlaceholder}
+            resizeMode="contain"
+          />
+          <View style={styles.locationOverlay}>
             <Ionicons name="call" size={20} color="#004282" />
-            <Text style={styles.locationText}>Llamar a {currentPatientName}</Text>
-          </TouchableOpacity>
+            <Text style={styles.locationText}>{patientName ? `Llamar a ${patientName}` : 'Llamar al paciente'}</Text>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -213,6 +159,7 @@ const styles = StyleSheet.create({
   calendarDayTextActive: { color: '#FFF', fontWeight: 'bold' },
   subSubtitle: { fontSize: 12, color: '#999', textAlign: 'center', marginBottom: 20 },
   timelineItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
+  dot: { width: 28, height: 28, borderRadius: 14, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
   pillIcon: { width: 28, height: 28, borderRadius: 14, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
   activityInfo: { flex: 1, backgroundColor: '#FFF', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' },
   activityRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
@@ -220,8 +167,8 @@ const styles = StyleSheet.create({
   activityDetail: { color: '#666', fontSize: 12 },
   activityTime: { fontSize: 12, color: '#2196F3', marginTop: 4 },
   sectionLabel: { fontSize: 16, fontWeight: 'bold', marginTop: 25, marginBottom: 10 },
-  mapContainer: { height: 250, borderRadius: 15, backgroundColor: '#E0E0E0', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
+  mapContainer: { height: 200, borderRadius: 15, backgroundColor: '#E0E0E0', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
+  mapPlaceholder: { width: '100%', height: '100%', opacity: 0.5 },
   locationOverlay: { position: 'absolute', bottom: 10, left: 10, backgroundColor: '#FFF', padding: 10, borderRadius: 20, flexDirection: 'row', alignItems: 'center', elevation: 3 },
   locationText: { marginLeft: 8, fontWeight: 'bold', color: '#004282' },
-  markerWrapper: { backgroundColor: 'white', borderRadius: 20, padding: 2, elevation: 5 },
 });

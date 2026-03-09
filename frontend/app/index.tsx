@@ -23,8 +23,12 @@ export default function LoginScreen() {
         const user = data.user;
         const userData = {
           fullName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
+          first_name: user.first_name,
+          last_name: user.last_name,
           roleId: user.roles_id.toString(),
-          code: user.link_code || linkCode
+          code: user.link_code || linkCode,
+          id: user.id,
+          roles_id: user.roles_id,
         };
 
         // Redirección
