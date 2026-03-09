@@ -25,3 +25,13 @@ export const updateAlarmState = (req, res) => {
         res.json({ success: true, message: "Estado de la alarma actualizado" });
     });
 };
+
+import Patient from '../models/patientModel.js';
+
+export const getAlarmsByPatient = (req, res) => {
+    const { id } = req.params;
+    Patient.getAlarms(id, (err, results) => {
+        if (err) return res.status(500).json({ success: false, error: err });
+        res.json(results); // Envía las alarmas al celular
+    });
+};

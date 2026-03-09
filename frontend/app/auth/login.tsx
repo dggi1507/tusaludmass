@@ -22,6 +22,7 @@ export default function LoginScreen() {
       if (data.success && data.user) {
         const user = data.user;
         const userData = {
+          id: user.id,
           fullName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
           roleId: user.roles_id.toString(),
           code: user.link_code || linkCode

@@ -1,35 +1,56 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; 
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { getPatientDashboard, Appointment, Alarm } from '../../services/patientService';
+
+// Formatear fecha para mostrar
+const formatearFecha = (fechaStr: string) => {
+  const d = new Date(fechaStr);
+  const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  return `${dias[d.getDay()]}, ${d.getDate()} ${d.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}`;
+};
+
+const formatearHora = (fechaStr: string) => {
+  return new Date(fechaStr).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+};
 
 // Definimos que el componente recibe 'user' como prop directamente
 export default function PacienteScreen({ user }: any) {
-  // --- NUEVO: Lógica para conectar con la DB ---
-  const [alarmasDB, setAlarmasDB] = React.useState<any[]>([]);
-  const [alarmaFlash, setAlarmaFlash] = React.useState<any>(null);
+  const [citas, setCitas] = React.useState<Appointment[]>([]);
+  const [alarmas, setAlarmas] = React.useState<Alarm[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [alarmaFlash, setAlarmaFlash] = React.useState<Alarm | null>(null);
+
+  const cargarDatos = React.useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const data = await getPatientDashboard(user.id);
+      if (data) {
+        setCitas(data.appointments);
+        setAlarmas(data.alarms);
+        // Alarma activa: hora ya pasó o es ahora
+        const ahora = new Date();
+        const proxima = data.alarms.find((a) => new Date(a.alarm_datetime) <= ahora && a.state === 1);
+        setAlarmaFlash(proxima || null);
+      }
+    } catch (error) {
+      console.error('Error al cargar datos:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
   React.useEffect(() => {
-    const cargarAlarmas = async () => {
-      try {
-        // REEMPLAZA '192.168.1.XX' por la IP de tu computadora
-        const response = await fetch(`http://192.168.1.XX:3000/api/paciente/alarmas/${user.id}`);
-        const data = await response.json();
-        setAlarmasDB(data);
-
-        // Si hay una alarma cuya hora ya pasó o es ahora, activamos el "Flash"
-        const ahora = new Date();
-        const alarmaProxima = data.find((a: any) => new Date(a.alarm_datetime) <= ahora);
-        if (alarmaProxima) setAlarmaFlash(alarmaProxima);
-        
-      } catch (error) {
-        console.error("Error al cargar datos:", error);
-      }
-    };
-
-    cargarAlarmas();
-    const interval = setInterval(cargarAlarmas, 30000); // Revisa cada 30 segundos
+    cargarDatos();
+    const interval = setInterval(cargarDatos, 30000); // Refresco cada 30 segundos
     return () => clearInterval(interval);
-  }, []);
+  }, [cargarDatos]);
+
+  // Medicamentos = alarmas con patient_medicine_id (hora de toma)
+  const medicamentos = alarmas.filter((a) => a.patient_medicine_id != null);
 
   // Estado para saber qué pantalla mostrar: 'inicio' o 'citas'
   const [vistaActual, setVistaActual] = React.useState('inicio');
@@ -68,58 +89,79 @@ export default function PacienteScreen({ user }: any) {
 
 
       {/* --- BLOQUE CENTRAL ÚNICO --- */}
-      {vistaActual === 'inicio' ? (
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3498DB" />
+          <Text style={styles.loadingText}>Cargando tus datos...</Text>
+        </View>
+      ) : vistaActual === 'inicio' ? (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.sectionTitle}>IMPORTANTES</Text>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-            <TouchableOpacity style={[styles.chip, styles.activeChip]}>
-              <Text style={styles.activeChipText}>TODO</Text>
-            </TouchableOpacity>
-            {['CARDIOLOGÍA', 'ORTOPEDIA', 'NEURO'].map((item) => (
-              <TouchableOpacity key={item} style={styles.chip}>
-                <Text style={styles.chipText}>{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
 
-          {/* Tarjeta Azul */}
-          <View style={[styles.card, { backgroundColor: '#3498DB' }]}>
-            <Text style={styles.cardDoctor}>Dr. Sarah Johnson</Text>
-            <Text style={styles.cardSub}>Cardiología - Consulta</Text>
-            <View style={styles.badgeContainer}>
-              <View style={styles.badge}>
-                <Ionicons name="calendar" size={14} color="#FFF" />
-                <Text style={styles.badgeText}>Jue, 13 Mar 2025</Text>
+          {alarmaFlash && (
+            <View style={[styles.card, styles.flashCard]}>
+              <Ionicons name="notifications" size={24} color="#FFF" />
+              <View style={styles.flashContent}>
+                <Text style={styles.cardDoctor}>Recordatorio activo</Text>
+                <Text style={styles.cardSub}>{alarmaFlash.title}</Text>
               </View>
             </View>
-          </View>
+          )}
 
-          {/* Tarjeta Morada */}
-          <View style={[styles.card, { backgroundColor: '#9B51E0' }]}>
-            <Text style={styles.cardDoctor}>Atorvastatina</Text>
-            <Text style={styles.cardSub}>Dosis: 10-40 mg/día</Text>
-            <View style={styles.badge}>
-              <Ionicons name="time" size={14} color="#FFF" />
-              <Text style={styles.badgeText}>1:00 PM</Text>
-            </View>
-          </View>
+          {citas.length > 0 && (
+            <>
+              <Text style={styles.subsectionTitle}>Citas programadas</Text>
+              {citas.slice(0, 3).map((cita) => (
+                <View key={cita.id} style={[styles.card, { backgroundColor: '#3498DB' }]}>
+                  <Text style={styles.cardDoctor}>Cita médica</Text>
+                  <Text style={styles.cardSub}>{cita.description}</Text>
+                  <View style={styles.badge}>
+                    <Ionicons name="calendar" size={14} color="#FFF" />
+                    <Text style={styles.badgeText}>{formatearFecha(cita.appointment_datetime)} • {formatearHora(cita.appointment_datetime)}</Text>
+                  </View>
+                </View>
+              ))}
+            </>
+          )}
+
+          {medicamentos.length > 0 && (
+            <>
+              <Text style={styles.subsectionTitle}>Medicamentos</Text>
+              {medicamentos.slice(0, 5).map((med) => (
+                <View key={med.id} style={[styles.card, { backgroundColor: '#9B51E0' }]}>
+                  <Text style={styles.cardDoctor}>{med.title}</Text>
+                  <Text style={styles.cardSub}>Hora de toma</Text>
+                  <View style={styles.badge}>
+                    <Ionicons name="time" size={14} color="#FFF" />
+                    <Text style={styles.badgeText}>{formatearHora(med.alarm_datetime)}</Text>
+                  </View>
+                </View>
+              ))}
+            </>
+          )}
+
+          {citas.length === 0 && medicamentos.length === 0 && !alarmaFlash && (
+            <Text style={styles.emptyText}>No hay citas ni medicamentos asignados por el cuidador.</Text>
+          )}
         </ScrollView>
       ) : (
-        /* --- ESTA ES LA PANTALLA DE CITAS --- */
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.sectionTitle}>MIS CITAS ASIGNADAS</Text>
-          <View style={[styles.card, { backgroundColor: '#3498DB' }]}>
-            <Text style={styles.cardDoctor}>Cita Médica en Agenda</Text>
-            <Text style={styles.cardSub}>Consulta de seguimiento - General</Text>
-            <View style={styles.badge}>
-              <Ionicons name="calendar" size={14} color="#FFF" />
-              <Text style={styles.badgeText}>Próximamente datos de DB</Text>
-            </View>
-          </View>
-          <Text style={{ textAlign: 'center', color: '#999', marginTop: 20 }}>
-            No hay más citas programadas por el momento.
-          </Text>
+
+          {citas.length > 0 ? (
+            citas.map((cita) => (
+              <View key={cita.id} style={[styles.card, { backgroundColor: '#3498DB' }]}>
+                <Text style={styles.cardDoctor}>Cita médica</Text>
+                <Text style={styles.cardSub}>{cita.description}</Text>
+                <View style={styles.badge}>
+                  <Ionicons name="calendar" size={14} color="#FFF" />
+                  <Text style={styles.badgeText}>{formatearFecha(cita.appointment_datetime)} • {formatearHora(cita.appointment_datetime)}</Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No hay citas programadas por el cuidador.</Text>
+          )}
         </ScrollView>
       )}
       {/* --- FIN LÓGICA --- */}
@@ -160,12 +202,6 @@ export default function PacienteScreen({ user }: any) {
           </Text>
         </TouchableOpacity>
 
-        {/* BOTÓN AJUSTES */}
-        <TouchableOpacity style={styles.tabItem}>
-          <Ionicons name="settings-outline" size={24} color="#999" />
-          <Text style={styles.tabText}>Ajustes</Text>
-        </TouchableOpacity>
-
       </View>
     </SafeAreaView>
   );
@@ -191,7 +227,13 @@ const styles = StyleSheet.create({
   codeValue: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
   
   content: { flex: 1, padding: 20 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  loadingText: { marginTop: 12, color: '#666', fontSize: 16 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 15 },
+  subsectionTitle: { fontSize: 16, fontWeight: '600', color: '#555', marginTop: 20, marginBottom: 10 },
+  emptyText: { textAlign: 'center', color: '#999', marginTop: 20, fontSize: 15 },
+  flashCard: { backgroundColor: '#E74C3C', flexDirection: 'row', alignItems: 'center', gap: 12 },
+  flashContent: { flex: 1 },
   
   filterRow: { flexDirection: 'row', marginBottom: 20 },
   chip: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F0F0F0', marginRight: 10 },

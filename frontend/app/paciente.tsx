@@ -8,6 +8,7 @@ export default function Page() {
   
   // Si no hay parámetros (por si entras directo), ponemos datos vacíos para que no truene
   const userData = {
+    id: params.id != null ? Number(params.id) : undefined,
     fullName: params.fullName || 'Usuario',
     link_code: params.code || '----'
   };
