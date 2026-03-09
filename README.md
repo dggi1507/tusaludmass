@@ -1,6 +1,7 @@
 # TuSaludMas
 
 Backend del proyecto TuSaludMas desarrollado con Node.js, Express y MySQL.
+Frontend del proyecto TuSaludMas desarrollado con React, expo.
 
 
 ---
@@ -12,12 +13,23 @@ Backend del proyecto TuSaludMas desarrollado con Node.js, Express y MySQL.
 - MySQL
 - Cors
 - Body-parser
+- React
+- Expo
 
 ---
 
 ## Estructura del proyecto
 
 backend/
+│
+├── src/
+│ ├── app.js
+│ ├── db.js
+│ └── config.js
+│
+├── index.js
+├── package.json
+frontend/
 │
 ├── src/
 │ ├── app.js

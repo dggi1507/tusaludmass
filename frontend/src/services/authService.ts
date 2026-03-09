@@ -1,6 +1,7 @@
 // frontend/src/services/authService.ts
+import { API_BASE_URL } from '../config/api';
 
-const API_URL = 'http://192.168.1.18:3000/api'; //SIEMPRE CORREGIR SEGÚN IP
+const API_URL = API_BASE_URL;
 
 export interface AuthResponse {
     success: boolean;
@@ -10,7 +11,7 @@ export interface AuthResponse {
         username: string;
         first_name: string;
         last_name: string;
-        roles_id: number; // Clave para la redirección
+        roles_id: number;
         link_code: string;
     };
 }
@@ -22,8 +23,7 @@ export const loginProvider = async (username: string, password: string): Promise
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password }),
         });
-        
-        // Verificamos si la respuesta es 200 OK antes de convertir a JSON
+
         if (!response.ok) {
             const errorData = await response.json();
             return { success: false, message: errorData.message || "Credenciales incorrectas" };
@@ -43,7 +43,7 @@ export const loginByCodeProvider = async (code: string): Promise<AuthResponse> =
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code }),
         });
-        
+
         return await response.json();
     } catch (error) {
         console.error("Error en loginByCodeProvider:", error);
