@@ -12,21 +12,30 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.raulpialert.tusaludmas",
-      "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/images/icon.png"
+      "package": "com.dgg1507.tusaludmas",
+      "versionCode": 1,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAgXugCpGCjauOdOzfvdykS6yaXYOMMkeI"
+        }
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "usesCleartextTraffic": true
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/icon.png"
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.INTERNET"
+      ]
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysPermissionMsg": "Permite que tuSalud+ acceda a tu ubicación para mostrar el mapa."
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -37,15 +46,12 @@
       ],
       "@react-native-community/datetimepicker"
     ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    },
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c4082548-b3c9-4e40-846d-2a4c8fe38cc6"
+        "projectId": "19b03764-9476-4e04-9a71-a3b61bf2c299"
       }
-    }
+    },
+    "owner": "dgg2003"
   }
 }
