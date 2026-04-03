@@ -1,21 +1,18 @@
 {
   "expo": {
     "name": "tuSalud+",
-    "slug": "tuSalud+",
+    "slug": "tusaludmas",
     "version": "1.0.0",
     "orientation": "portrait",
-
     "icon": "./assets/images/icon.png",
-
-    "scheme": "tuSalud+",
+    "scheme": "tusaludmas",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
+      "package": "com.raulpialert.tusaludmas",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/icon.png"
@@ -24,12 +21,10 @@
       "predictiveBackGestureEnabled": false,
       "usesCleartextTraffic": true
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/images/icon.png"
     },
-
     "plugins": [
       "expo-router",
       [
@@ -42,10 +37,15 @@
       ],
       "@react-native-community/datetimepicker"
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c4082548-b3c9-4e40-846d-2a4c8fe38cc6"
+      }
     }
   }
 }

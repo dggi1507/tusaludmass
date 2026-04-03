@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps'; // Eliminamos PROVIDER_GOOGLE de aquí
 import { API_BASE_URL } from '../../config/api';
 import type { CuidadorUser, PatientLinked, NotificacionEmergente } from '../../types/database';
 
@@ -101,6 +101,13 @@ export default function CuidadorScreen({
     pacienteInfo?.first_name ||
     (patient ? getDisplayName(patient) : 'Paciente');
 
+  // Validación de seguridad para las coordenadas
+  const hasValidLocation = 
+    pacienteInfo?.latitude && 
+    pacienteInfo?.longitude && 
+    !isNaN(parseFloat(pacienteInfo.latitude)) && 
+    !isNaN(parseFloat(pacienteInfo.longitude));
+
   return (
     <SafeAreaView style={styles.container}>
 
@@ -126,7 +133,6 @@ export default function CuidadorScreen({
         </View>
 
         <View style={styles.summaryCard}>
-
           <Text style={styles.monthTitle}>Marzo</Text>
 
           <View style={styles.calendarStrip}>
@@ -151,7 +157,6 @@ export default function CuidadorScreen({
 
           {notificaciones.map((notif) => (
             <View key={notif.id} style={styles.timelineItem}>
-
               <View style={[styles.pillIcon, { backgroundColor: '#2196F3' }]}>
                 {notif.type === 'toma'
                   ? <FontAwesome5 name="pills" size={14} color="#FFF" />
@@ -159,10 +164,8 @@ export default function CuidadorScreen({
               </View>
 
               <View style={styles.activityInfo}>
-
                 <View style={styles.activityRow}>
                   <Text style={styles.activityTitle}>{notif.title}</Text>
-
                   <TouchableOpacity>
                     <Ionicons name="ellipsis-vertical" size={18} color="#666" />
                   </TouchableOpacity>
@@ -175,7 +178,6 @@ export default function CuidadorScreen({
                 <Text style={styles.activityTime}>
                   <Ionicons name="time-outline" size={14} /> {formatAlarmTime(notif.alarm_datetime)}
                 </Text>
-
               </View>
             </View>
           ))}
@@ -186,13 +188,11 @@ export default function CuidadorScreen({
         </Text>
 
         <View style={styles.mapContainer}>
-
           {loadingMap ? (
             <ActivityIndicator size="large" color="#2196F3" />
-          ) : pacienteInfo?.latitude ? (
-
+          ) : hasValidLocation ? (
             <MapView
-              provider={PROVIDER_GOOGLE}
+              // Quitamos PROVIDER_GOOGLE para mayor estabilidad en APK sin API Key configurada
               style={StyleSheet.absoluteFillObject}
               region={{
                 latitude: parseFloat(pacienteInfo.latitude),
@@ -201,7 +201,6 @@ export default function CuidadorScreen({
                 longitudeDelta: 0.005,
               }}
             >
-
               <Marker
                 coordinate={{
                   latitude: parseFloat(pacienteInfo.latitude),
@@ -214,13 +213,14 @@ export default function CuidadorScreen({
                   <Ionicons name="person-circle" size={40} color="#2196F3" />
                 </View>
               </Marker>
-
             </MapView>
-
           ) : (
-            <Text style={{ color: '#666', fontStyle: 'italic' }}>
-              Buscando señal GPS...
-            </Text>
+            <View style={{ alignItems: 'center' }}>
+              <Ionicons name="location-outline" size={40} color="#999" />
+              <Text style={{ color: '#666', fontStyle: 'italic', textAlign: 'center', marginTop: 10 }}>
+                Buscando coordenadas válidas...
+              </Text>
+            </View>
           )}
 
           <TouchableOpacity style={styles.locationOverlay} onPress={handleCall}>
@@ -229,48 +229,40 @@ export default function CuidadorScreen({
               Llamar a {currentPatientName}
             </Text>
           </TouchableOpacity>
-
         </View>
 
       </ScrollView>
-
     </SafeAreaView>
   );
 }
 
+// Estilos se mantienen iguales a los tuyos...
 const styles = StyleSheet.create({
-
   container: { flex: 1, backgroundColor: '#FFF' },
-
   header: {
     backgroundColor: '#2196F3',
     paddingHorizontal: 20,
     paddingVertical: 15,
     alignItems: 'flex-start'
   },
-
   headerTitle: {
     color: '#FFF',
     fontSize: 20,
     fontWeight: 'bold',
     letterSpacing: 2
   },
-
   scrollContent: { padding: 20 },
-
   welcomeSection: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 25
   },
-
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
     marginRight: 15
   },
-
   avatarPlaceholder: {
     width: 50,
     height: 50,
@@ -280,35 +272,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-
   greeting: { fontSize: 14, color: '#666' },
-
   userName: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333'
   },
-
   summaryCard: {
     backgroundColor: '#F8F9FA',
     borderRadius: 15,
     padding: 20,
     elevation: 2
   },
-
   monthTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 12
   },
-
   calendarStrip: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 8
   },
-
   calendarDay: {
     alignItems: 'center',
     paddingVertical: 8,
@@ -316,32 +302,26 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     minWidth: 36
   },
-
   calendarDayActive: {
     backgroundColor: '#2196F3'
   },
-
   calendarDayNum: { fontSize: 14, color: '#999' },
   calendarDayLabel: { fontSize: 11, color: '#999' },
-
   calendarDayTextActive: {
     color: '#FFF',
     fontWeight: 'bold'
   },
-
   subSubtitle: {
     fontSize: 12,
     color: '#999',
     textAlign: 'center',
     marginBottom: 20
   },
-
   timelineItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 16
   },
-
   pillIcon: {
     width: 28,
     height: 28,
@@ -350,7 +330,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-
   activityInfo: {
     flex: 1,
     backgroundColor: '#FFF',
@@ -359,37 +338,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EEE'
   },
-
   activityRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4
   },
-
   activityTitle: {
     fontWeight: 'bold',
     fontSize: 14
   },
-
   activityDetail: {
     color: '#666',
     fontSize: 12
   },
-
   activityTime: {
     fontSize: 12,
     color: '#2196F3',
     marginTop: 4
   },
-
   sectionLabel: {
     fontSize: 16,
     fontWeight: 'bold',
     marginTop: 25,
     marginBottom: 10
   },
-
   mapContainer: {
     height: 250,
     borderRadius: 15,
@@ -398,7 +371,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-
   locationOverlay: {
     position: 'absolute',
     bottom: 10,
@@ -410,18 +382,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 3
   },
-
   locationText: {
     marginLeft: 8,
     fontWeight: 'bold',
     color: '#004282'
   },
-
   markerWrapper: {
     backgroundColor: 'white',
     borderRadius: 20,
     padding: 2,
     elevation: 5
   }
-
 });
