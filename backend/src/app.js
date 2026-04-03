@@ -9,7 +9,13 @@ import alarmRoutes from './routes/alarmRoutes.js';
 const app = express();
 
 // Middlewares
-app.use(cors()); 
+// Configuración de CORS para permitir conexiones externas (App móvil)
+app.use(cors({
+  origin: '*', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+})); 
+
 app.use(express.json()); 
 
 // Rutas
@@ -22,9 +28,9 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/alarms', alarmRoutes);
 
-// Ruta de prueba
+// Ruta de prueba para verificar que el servidor en Render está vivo
 app.get('/api/saludo', (req, res) => {
-  res.json({ mensaje: "Conexión exitosa desde el Backend de Node.js" });
+  res.json({ mensaje: "Conexión exitosa desde el Backend de Node.js en Render" });
 });
 
 export default app;

@@ -3,20 +3,15 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306
-});
+// Usamos la URI completa que es más segura y fácil para Aiven/Render
+const db = mysql.createConnection(process.env.DATABASE_URL + "?ssl-mode=REQUIRED");
 
 db.connect((err) => {
   if (err) {
-    console.error('Error conectando a la base de datos:', err.message);
+    console.error('Error conectando a la base de datos de Aiven:', err.message);
     return;
   }
-  console.log('Base de datos "tusaludmas" conectada correctamente.');
+  console.log('¡Conexión exitosa a la base de datos en la nube!');
 });
 
 export default db;
