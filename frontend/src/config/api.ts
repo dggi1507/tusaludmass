@@ -1,6 +1,11 @@
 /**
  * Configuración central del API backend.
- * IMPORTANTE: Cambia esta IP según tu red local donde corre el backend.
- * Debe ser la IP de tu PC en la red (ej: 192.168.1.x o 192.168.80.x)
+ * Ya no usamos la IP local, ahora apuntamos al servidor en la nube de Render.
  */
-export const API_BASE_URL = 'http://192.168.1.18:3000/api';
+
+// 1. Esta es tu nueva URL de producción
+export const API_BASE_URL = 'https://tusaludmas.onrender.com/api';
+
+// 2. Mantenemos el export default por si algún archivo lo usa así
+const API_URL = API_BASE_URL;
+export default API_URL;
