@@ -151,7 +151,7 @@ export const forgotPassword = (req, res) => {
             // Configuramos el mensaje para SendGrid
             const msg = {
                 to: user.email, //
-                from: 'giraldogiraldodaniel3@gmail.com', // El correo que verificaste en SendGrid
+                from: 'tusaludmas8@gmail.com', // El correo que verificaste en SendGrid
                 subject: 'Código de Recuperación - Tu Salud +',
                 html: `
                     <div style="font-family: sans-serif; max-width: 450px; border: 1px solid #eee; padding: 25px; border-radius: 8px;">
