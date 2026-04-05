@@ -135,12 +135,8 @@ export const forgotPassword = (req, res) => {
         if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
 
         const token = crypto.randomBytes(20).toString('hex');
-        
-        // AJUSTE DE ZONA HORARIA: Formateamos la fecha para MySQL (YYYY-MM-DD HH:MM:SS)
-        // Dentro de forgotPassword
-        const expiresDate = new Date(Date.now() + 3600000); // 1 hora
+        const expiresDate = new Date(Date.now() + 3600000); 
         const expires = expiresDate.toISOString().slice(0, 19).replace('T', ' '); 
-        // Esto envía: "2026-04-04 01:30:00" (en formato UTC)
 
         User.saveResetToken(user.id, token, expires, (err) => {
             if (err) {
@@ -148,11 +144,19 @@ export const forgotPassword = (req, res) => {
                 return res.status(500).json({ success: false, message: 'Error al procesar la solicitud' });
             }
 
+            // CONFIGURACIÓN OPTIMIZADA PARA RENDER
             const transporter = nodemailer.createTransport({
-                service: 'gmail',
+                host: 'smtp.gmail.com',
+                port: 465,
+                secure: true,
                 auth: {
                     user: process.env.EMAIL_USER,
                     pass: process.env.EMAIL_PASS
+                },
+                connectionTimeout: 10000, 
+                socketTimeout: 10000,
+                tls: {
+                    rejectUnauthorized: false // Ignora errores de resolución IPv6
                 }
             });
 
