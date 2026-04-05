@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { 
-  View, Text, StyleSheet, TextInput, TouchableOpacity, 
-  SafeAreaView, ScrollView, Platform, Alert, ActivityIndicator 
+  View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, Alert, ActivityIndicator 
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ENDPOINTS } from '../../src/config/api';
 

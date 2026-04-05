@@ -12,7 +12,12 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
+<<<<<<< HEAD
     "@react-native-community/datetimepicker": "8.4.4",
+=======
+    "@react-native-community/datetimepicker": "^8.6.0",
+    "@react-native-picker/picker": "^2.11.4",
+>>>>>>> ade6ad47bec17d5970479507f4f8a94364cc1c14
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
@@ -32,6 +37,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-calendars": "^1.1314.0",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-maps": "1.20.1",
     "react-native-reanimated": "~4.1.1",
