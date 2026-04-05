@@ -144,19 +144,19 @@ export const forgotPassword = (req, res) => {
                 return res.status(500).json({ success: false, message: 'Error al procesar la solicitud' });
             }
 
-            // CONFIGURACIÓN OPTIMIZADA PARA RENDER
             const transporter = nodemailer.createTransport({
                 host: 'smtp.gmail.com',
-                port: 465,
-                secure: true,
+                port: 587, // Cambiamos de 465 a 587
+                secure: false, // Debe ser FALSE para el puerto 587
                 auth: {
                     user: process.env.EMAIL_USER,
                     pass: process.env.EMAIL_PASS
                 },
-                connectionTimeout: 10000, 
-                socketTimeout: 10000,
+                family: 4, 
+                connectionTimeout: 15000, // Subimos a 15 segundos por si acaso
+                socketTimeout: 15000,
                 tls: {
-                    rejectUnauthorized: false // Ignora errores de resolución IPv6
+                    rejectUnauthorized: false 
                 }
             });
 
