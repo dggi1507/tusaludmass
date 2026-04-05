@@ -1,10 +1,10 @@
 import User from '../models/user.js';
 import bcrypt from 'bcrypt'; 
-import { Resend } from 'resend'; // 1. Cambiamos nodemailer por resend
+import sgMail from '@sendgrid/mail'; //
 import crypto from 'crypto';
 
-// Inicializamos Resend con la variable de entorno que pusimos en Render
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Configuramos SendGrid con la API Key que pusiste en Render
+sgMail.setApiKey(process.env.SENDGRID_API_KEY); //
 
 // LOGIN ESTÁNDAR
 export const login = (req, res) => {
@@ -129,7 +129,7 @@ export const updateUser = (req, res) => {
     });
 };
 
-// RECUPERAR CONTRASEÑA (ENVÍO DE TOKEN CON RESEND)
+// RECUPERAR CONTRASEÑA (ENVÍO CON SENDGRID)
 export const forgotPassword = (req, res) => {
     const { email } = req.body;
 
@@ -137,7 +137,7 @@ export const forgotPassword = (req, res) => {
         if (err) return res.status(500).json({ success: false, message: 'Error de servidor' });
         if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
 
-        // Generamos un código corto de 6 números para que sea más fácil de escribir en el celular
+        // Generamos un código de 6 números
         const token = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresDate = new Date(Date.now() + 3600000); // 1 hora
         const expires = expiresDate.toISOString().slice(0, 19).replace('T', ' '); 
@@ -148,38 +148,33 @@ export const forgotPassword = (req, res) => {
                 return res.status(500).json({ success: false, message: 'Error al procesar la solicitud' });
             }
 
-            // ENVIAR POR RESEND (HTTP)
-            try {
-                const { data, error } = await resend.emails.send({
-                    from: 'Tu Salud + <onboarding@resend.dev>',
-                    to: [user.email],
-                    subject: 'Código de Recuperación - Tu Salud +',
-                    html: `
-                        <div style="font-family: sans-serif; max-width: 450px; border: 1px solid #eee; padding: 25px; border-radius: 8px;">
-                            <h2 style="color: #2c3e50; text-align: center;">Recuperación de Cuenta</h2>
-                            <p>Hola, <strong>${user.first_name || 'Usuario'}</strong>.</p>
-                            <p>Has solicitado restablecer tu contraseña. Usa el siguiente código para completar el proceso:</p>
-                            <div style="background: #f9f9f9; padding: 15px; text-align: center; font-size: 1.8em; font-weight: bold; color: #4A90E2; border: 2px dashed #4A90E2; margin: 20px 0; letter-spacing: 5px;">
-                                ${token}
-                            </div>
-                            <p style="font-size: 0.85em; color: #7f8c8d;">Este código es válido por 1 hora.</p>
-                            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                            <p style="text-align: center; color: #bdc3c7; font-size: 0.8em;">&copy; 2026 Tu Salud + | Medellín, Colombia</p>
+            // Configuramos el mensaje para SendGrid
+            const msg = {
+                to: user.email, //
+                from: 'tusaludmas8@gmail.com', // El correo que verificaste en SendGrid
+                subject: 'Código de Recuperación - Tu Salud +',
+                html: `
+                    <div style="font-family: sans-serif; max-width: 450px; border: 1px solid #eee; padding: 25px; border-radius: 8px;">
+                        <h2 style="color: #2c3e50; text-align: center;">Recuperación de Cuenta</h2>
+                        <p>Hola, <strong>${user.first_name || 'Usuario'}</strong>.</p>
+                        <p>Has solicitado restablecer tu contraseña. Usa el siguiente código para completar el proceso:</p>
+                        <div style="background: #f9f9f9; padding: 15px; text-align: center; font-size: 1.8em; font-weight: bold; color: #4A90E2; border: 2px dashed #4A90E2; margin: 20px 0; letter-spacing: 5px;">
+                            ${token}
                         </div>
-                    `
-                });
+                        <p style="font-size: 0.85em; color: #7f8c8d;">Este código es válido por 1 hora.</p>
+                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                        <p style="text-align: center; color: #bdc3c7; font-size: 0.8em;">&copy; 2026 Tu Salud + | Medellín, Colombia</p>
+                    </div>
+                `,
+            };
 
-                if (error) {
-                    console.error("Error de Resend:", error);
-                    return res.status(500).json({ success: false, message: 'Error al enviar el correo' });
-                }
-
-                console.log("Correo enviado con Resend ID:", data.id);
+            try {
+                await sgMail.send(msg); //
+                console.log("Correo enviado exitosamente con SendGrid"); //
                 res.status(200).json({ success: true, message: 'Correo enviado con éxito' });
-
             } catch (sendError) {
-                console.error("Fallo crítico enviando correo:", sendError);
-                res.status(500).json({ success: false, message: 'Fallo al conectar con el servicio de correo' });
+                console.error("Error de SendGrid:", sendError.response?.body || sendError); //
+                res.status(500).json({ success: false, message: 'Error al enviar el correo' });
             }
         });
     });
