@@ -28,6 +28,8 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/alarms', alarmRoutes);
 
+app.use('/api/auth', authRoutes);
+
 // Ruta de prueba para verificar que el servidor en Render está vivo
 app.get('/api/saludo', (req, res) => {
   res.json({ mensaje: "Conexión exitosa desde el Backend de Node.js en Render" });

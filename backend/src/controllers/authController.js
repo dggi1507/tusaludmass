@@ -1,5 +1,7 @@
 import User from '../models/user.js';
 import bcrypt from 'bcrypt'; 
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 
 // LOGIN ESTÁNDAR
 export const login = (req, res) => {
@@ -70,16 +72,12 @@ export const getAllUsers = (req, res) => {
 export const register = async (req, res) => {
     const { first_name, last_name, email, password, roleType } = req.body;
 
-    // Validación básica de campos requeridos
     if (!first_name || !email || !password) {
         return res.status(400).json({ message: "Faltan campos obligatorios" });
     }
 
     try {
-        // Encriptamos la contraseña
         const hashedPassword = await bcrypt.hash(password, 10);
-        
-        // Asignamos el ID según lo definido: Paciente (2) o Cuidador (3)
         const roles_id = (roleType === 'cuidador') ? 3 : 2;
 
         User.create({ 
@@ -109,8 +107,9 @@ export const register = async (req, res) => {
     }
 };
 
+// ACTUALIZAR USUARIO
 export const updateUser = (req, res) => {
-    const { id } = req.params; // Obtenemos el ID de la URL
+    const { id } = req.params; 
     const userData = req.body;
 
     User.update(id, userData, (err, result) => {
@@ -124,5 +123,97 @@ export const updateUser = (req, res) => {
         }
 
         res.json({ success: true, message: 'Datos actualizados correctamente' });
+    });
+};
+
+// RECUPERAR CONTRASEÑA (ENVÍO DE TOKEN)
+export const forgotPassword = (req, res) => {
+    const { email } = req.body;
+
+    User.findByEmail(email, (err, user) => {
+        if (err) return res.status(500).json({ success: false, message: 'Error de servidor' });
+        if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+
+        const token = crypto.randomBytes(20).toString('hex');
+        
+        // AJUSTE DE ZONA HORARIA: Formateamos la fecha para MySQL (YYYY-MM-DD HH:MM:SS)
+        // Dentro de forgotPassword
+        const expiresDate = new Date(Date.now() + 3600000); // 1 hora
+        const expires = expiresDate.toISOString().slice(0, 19).replace('T', ' '); 
+        // Esto envía: "2026-04-04 01:30:00" (en formato UTC)
+
+        User.saveResetToken(user.id, token, expires, (err) => {
+            if (err) {
+                console.error("Error al guardar token:", err);
+                return res.status(500).json({ success: false, message: 'Error al procesar la solicitud' });
+            }
+
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS
+                }
+            });
+
+            const mailOptions = {
+                from: `"Tu Salud +" <${process.env.EMAIL_USER}>`,
+                to: user.email,
+                subject: 'Código de Recuperación - Tu Salud +',
+                text: `Tu código de recuperación es: ${token}`,
+                html: `
+                    <div style="font-family: sans-serif; max-width: 450px; border: 1px solid #eee; padding: 25px; border-radius: 8px;">
+                        <h2 style="color: #2c3e50; text-align: center;">Recuperación de Cuenta</h2>
+                        <p>Hola, <strong>${user.first_name || 'Usuario'}</strong>.</p>
+                        <p>Has solicitado restablecer tu contraseña. Usa el siguiente código para completar el proceso:</p>
+                        <div style="background: #f9f9f9; padding: 15px; text-align: center; font-size: 1.3em; font-weight: bold; color: #d9534f; border: 2px dashed #ddd; margin: 20px 0;">
+                            ${token}
+                        </div>
+                        <p style="font-size: 0.85em; color: #7f8c8d;">Este código es válido por 1 hora.</p>
+                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                        <p style="text-align: center; color: #bdc3c7; font-size: 0.8em;">&copy; 2026 Tu Salud + | Medellín, Colombia</p>
+                    </div>
+                `
+            };
+
+            transporter.sendMail(mailOptions, (err) => {
+                if (err) {
+                    console.error("Error Nodemailer:", err);
+                    return res.status(500).json({ success: false, message: 'Error al enviar el correo' });
+                }
+                res.status(200).json({ success: true, message: 'Correo enviado con éxito' });
+            });
+        });
+    });
+};
+
+// RESTABLECER CONTRASEÑA FINAL
+export const resetPassword = async (req, res) => {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Token y nueva contraseña requeridos' });
+    }
+
+    User.findByResetToken(token, async (err, user) => {
+        if (err || !user) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'El código es inválido o ya expiró. Pide uno nuevo.' 
+            });
+        }
+
+        try {
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            User.updatePassword(user.id, hashedPassword, (err) => {
+                if (err) {
+                    return res.status(500).json({ success: false, message: 'Error al actualizar la contraseña' });
+                }
+                res.json({ success: true, message: '¡Contraseña actualizada con éxito!' });
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, message: 'Error en el servidor al encriptar' });
+        }
     });
 };

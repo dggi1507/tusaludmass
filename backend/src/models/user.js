@@ -78,7 +78,44 @@ const User = {
             WHERE id = ?`;
 
         db.query(sql, [first_name, last_name, email, username, phone, userId], callback);
+    },
+
+    findByEmail: (email, callback) => {
+        const sql = 'SELECT * FROM users WHERE email = ?'; 
+        db.query(sql, [email.trim()], (err, results) => {
+            if (err) return callback(err, null);
+            callback(null, results[0]);
+        });
+    },
+
+    saveResetToken: (userId, token, expires, callback) => {
+        const sql = 'UPDATE users SET resetPasswordToken = ?, resetPasswordExpires = ? WHERE id = ?';
+        db.query(sql, [token, expires, userId], callback);
+    },
+
+    updatePassword: (userId, newPassword, callback) => {
+        const sql = `
+            UPDATE users 
+            SET password = ?, resetPasswordToken = NULL, resetPasswordExpires = NULL 
+            WHERE id = ?`;
+        db.query(sql, [newPassword, userId], callback);
+    },
+
+    findByResetToken: (token, callback) => {
+        // Usar UTC_TIMESTAMP() es la clave para que funcione en Aiven
+        const sql = `
+            SELECT * FROM users 
+            WHERE resetPasswordToken = ? 
+            AND resetPasswordExpires > UTC_TIMESTAMP() 
+            AND state = 1`;
+        
+        db.query(sql, [token], (err, results) => {
+            if (err) return callback(err, null);
+            callback(null, results[0]);
+        });
     }
 };
+
+
 
 export default User;
