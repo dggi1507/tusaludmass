@@ -1,7 +1,10 @@
 import User from '../models/user.js';
 import bcrypt from 'bcrypt'; 
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend'; // 1. Cambiamos nodemailer por resend
 import crypto from 'crypto';
+
+// Inicializamos Resend con la variable de entorno que pusimos en Render
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // LOGIN ESTÁNDAR
 export const login = (req, res) => {
@@ -126,71 +129,58 @@ export const updateUser = (req, res) => {
     });
 };
 
-// RECUPERAR CONTRASEÑA (ENVÍO DE TOKEN)
+// RECUPERAR CONTRASEÑA (ENVÍO DE TOKEN CON RESEND)
 export const forgotPassword = (req, res) => {
     const { email } = req.body;
 
-    User.findByEmail(email, (err, user) => {
+    User.findByEmail(email, async (err, user) => {
         if (err) return res.status(500).json({ success: false, message: 'Error de servidor' });
         if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
 
-        const token = crypto.randomBytes(20).toString('hex');
-        const expiresDate = new Date(Date.now() + 3600000); 
+        // Generamos un código corto de 6 números para que sea más fácil de escribir en el celular
+        const token = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresDate = new Date(Date.now() + 3600000); // 1 hora
         const expires = expiresDate.toISOString().slice(0, 19).replace('T', ' '); 
 
-        User.saveResetToken(user.id, token, expires, (err) => {
+        User.saveResetToken(user.id, token, expires, async (err) => {
             if (err) {
                 console.error("Error al guardar token:", err);
                 return res.status(500).json({ success: false, message: 'Error al procesar la solicitud' });
             }
 
-            const transporter = nodemailer.createTransport({
-                host: 'smtp.gmail.com',
-                port: 587,
-                secure: false, 
-                auth: {
-                    user: process.env.EMAIL_USER,
-                    pass: process.env.EMAIL_PASS
-                },
-                // Forzamos IPv4 aquí también
-                family: 4, 
-                // Aumentamos los tiempos de espera al máximo para Render
-                connectionTimeout: 30000, 
-                greetingTimeout: 30000,
-                socketTimeout: 30000,
-                tls: {
-                    rejectUnauthorized: false,
-                    minVersion: 'TLSv1.2'
-                }
-            });
-
-            const mailOptions = {
-                from: `"Tu Salud +" <${process.env.EMAIL_USER}>`,
-                to: user.email,
-                subject: 'Código de Recuperación - Tu Salud +',
-                text: `Tu código de recuperación es: ${token}`,
-                html: `
-                    <div style="font-family: sans-serif; max-width: 450px; border: 1px solid #eee; padding: 25px; border-radius: 8px;">
-                        <h2 style="color: #2c3e50; text-align: center;">Recuperación de Cuenta</h2>
-                        <p>Hola, <strong>${user.first_name || 'Usuario'}</strong>.</p>
-                        <p>Has solicitado restablecer tu contraseña. Usa el siguiente código para completar el proceso:</p>
-                        <div style="background: #f9f9f9; padding: 15px; text-align: center; font-size: 1.3em; font-weight: bold; color: #d9534f; border: 2px dashed #ddd; margin: 20px 0;">
-                            ${token}
+            // ENVIAR POR RESEND (HTTP)
+            try {
+                const { data, error } = await resend.emails.send({
+                    from: 'Tu Salud + <onboarding@resend.dev>',
+                    to: [user.email],
+                    subject: 'Código de Recuperación - Tu Salud +',
+                    html: `
+                        <div style="font-family: sans-serif; max-width: 450px; border: 1px solid #eee; padding: 25px; border-radius: 8px;">
+                            <h2 style="color: #2c3e50; text-align: center;">Recuperación de Cuenta</h2>
+                            <p>Hola, <strong>${user.first_name || 'Usuario'}</strong>.</p>
+                            <p>Has solicitado restablecer tu contraseña. Usa el siguiente código para completar el proceso:</p>
+                            <div style="background: #f9f9f9; padding: 15px; text-align: center; font-size: 1.8em; font-weight: bold; color: #4A90E2; border: 2px dashed #4A90E2; margin: 20px 0; letter-spacing: 5px;">
+                                ${token}
+                            </div>
+                            <p style="font-size: 0.85em; color: #7f8c8d;">Este código es válido por 1 hora.</p>
+                            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                            <p style="text-align: center; color: #bdc3c7; font-size: 0.8em;">&copy; 2026 Tu Salud + | Medellín, Colombia</p>
                         </div>
-                        <p style="font-size: 0.85em; color: #7f8c8d;">Este código es válido por 1 hora.</p>
-                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                        <p style="text-align: center; color: #bdc3c7; font-size: 0.8em;">&copy; 2026 Tu Salud + | Medellín, Colombia</p>
-                    </div>
-                `
-            };
+                    `
+                });
 
-            transporter.sendMail(mailOptions, (err) => {
-                if (err) {
-                    console.error("Error Nodemailer:", err);
+                if (error) {
+                    console.error("Error de Resend:", error);
                     return res.status(500).json({ success: false, message: 'Error al enviar el correo' });
                 }
+
+                console.log("Correo enviado con Resend ID:", data.id);
                 res.status(200).json({ success: true, message: 'Correo enviado con éxito' });
-            });
+
+            } catch (sendError) {
+                console.error("Fallo crítico enviando correo:", sendError);
+                res.status(500).json({ success: false, message: 'Fallo al conectar con el servicio de correo' });
+            }
         });
     });
 };
