@@ -145,20 +145,22 @@ export const forgotPassword = (req, res) => {
             }
 
             const transporter = nodemailer.createTransport({
-                // Usamos la IP de Google para el puerto 587 para saltarnos el error de DNS/IPv6
-                host: '172.253.115.108', 
+                host: 'smtp.gmail.com',
                 port: 587,
-                secure: false,
+                secure: false, 
                 auth: {
                     user: process.env.EMAIL_USER,
                     pass: process.env.EMAIL_PASS
                 },
-                servername: 'smtp.gmail.com', // Esto es vital para que el certificado SSL no falle
-                family: 4,
-                connectionTimeout: 20000,
+                // Forzamos IPv4 aquí también
+                family: 4, 
+                // Aumentamos los tiempos de espera al máximo para Render
+                connectionTimeout: 30000, 
+                greetingTimeout: 30000,
+                socketTimeout: 30000,
                 tls: {
                     rejectUnauthorized: false,
-                    servername: 'smtp.gmail.com'
+                    minVersion: 'TLSv1.2'
                 }
             });
 
