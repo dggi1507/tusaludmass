@@ -145,22 +145,20 @@ export const forgotPassword = (req, res) => {
             }
 
             const transporter = nodemailer.createTransport({
-                // smtp-relay suele saltar los bloqueos de puerto que tiene el smtp normal
-                host: 'smtp-relay.gmail.com', 
+                // Usamos la IP de Google para el puerto 587 para saltarnos el error de DNS/IPv6
+                host: '172.253.115.108', 
                 port: 587,
                 secure: false,
                 auth: {
                     user: process.env.EMAIL_USER,
                     pass: process.env.EMAIL_PASS
                 },
+                servername: 'smtp.gmail.com', // Esto es vital para que el certificado SSL no falle
                 family: 4,
                 connectionTimeout: 20000,
-                greetingTimeout: 20000,
-                socketTimeout: 20000,
                 tls: {
-                    // Obliga a usar versiones modernas de TLS para que Google no rechace
                     rejectUnauthorized: false,
-                    minVersion: 'TLSv1.2'
+                    servername: 'smtp.gmail.com'
                 }
             });
 
