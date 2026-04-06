@@ -1,13 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications'; 
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Notifications from 'expo-notifications';
 import { getPatientDashboard, updateAlarmState, Appointment, Alarm } from '../../services/patientService';
 import {
   alarmIdFromNotificationData,
   scheduleMedicationAlarm,
   syncServerMedicationAlarms,
-} from '../../services/notificationService'; 
+} from '../../services/notificationService';
 
 // Formatear fecha para mostrar
 const formatearFecha = (fechaStr: string) => {
@@ -39,26 +40,22 @@ export default function PacienteScreen({ user }: any) {
   const [confirmandoToma, setConfirmandoToma] = React.useState(false);
   const ultimaSyncAlarmasRef = React.useRef<string>('');
 
-  const abrirModalDesdeNotificacion = React.useCallback((notification: Notifications.Notification) => {
-    const content = notification.request.content;
-    const data = content.data as Record<string, unknown> | undefined;
+  const abrirModalDesdeNotificacion = React.useCallback((
+    title: string,
+    body: string,
+    data?: Record<string, unknown>
+  ) => {
     const alarmId = alarmIdFromNotificationData(data);
-    const fromTitle = (content.title ?? '').match(/medicina:\s*(.+?)!/i)?.[1]?.trim();
-    const medNombre =
-      typeof data?.medNombre === 'string' && data.medNombre.length > 0
-        ? data.medNombre
-        : fromTitle || 'Medicamento';
-    const medDosis =
-      typeof data?.medDosis === 'string' && data.medDosis.length > 0
-        ? data.medDosis
-        : (content.body ?? '').replace(/^Dosis:\s*/i, '') || '';
+    const fromTitle = title.match(/medicina:\s*(.+?)!/i)?.[1]?.trim();
+    const medNombre = (typeof data?.medNombre === 'string' ? data.medNombre : null) || fromTitle || 'Medicamento';
+    const medDosis = (typeof data?.medDosis === 'string' ? data.medDosis : null) || body.replace(/^Dosis:\s*/i, '') || 'Según indicación';
 
     setModalMed({
-      title: content.title || 'Recordatorio',
-      detail: content.body || '',
+      title: title || 'Recordatorio',
+      detail: body || '',
       alarmId,
       medNombre,
-      medDosis: medDosis || 'Según indicación',
+      medDosis,
     });
     setModalVisible(true);
   }, []);
@@ -106,12 +103,16 @@ export default function PacienteScreen({ user }: any) {
     const interval = setInterval(cargarDatos, 30000);
 
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
-      abrirModalDesdeNotificacion(notification);
+      const content = notification.request.content;
+      const data = content.data as Record<string, string> | undefined;
+      abrirModalDesdeNotificacion(content.title ?? '', content.body ?? '', data);
     });
 
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
       if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
-      abrirModalDesdeNotificacion(response.notification);
+      const content = response.notification.request.content;
+      const data = content.data as Record<string, string> | undefined;
+      abrirModalDesdeNotificacion(content.title ?? '', content.body ?? '', data);
     });
 
     return () => {
@@ -342,7 +343,7 @@ const styles = StyleSheet.create({
   modalMedText: { fontSize: 18, borderBottomWidth: 1, borderBottomColor: '#EEE', width: '100%', textAlign: 'center', paddingBottom: 15, marginBottom: 20, color: '#444' },
   modalBtn: { width: '100%', paddingVertical: 12, borderRadius: 25, marginBottom: 10 },
   modalBtnText: { color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: 14 },
-  btnGreen: { backgroundColor: '#A9B388' },
+  btnGreen: { backgroundColor: '#27AE60' },
   btnOrange: { backgroundColor: '#FF8C00' },
   btnRed: { backgroundColor: '#FF4C4C' }
 });

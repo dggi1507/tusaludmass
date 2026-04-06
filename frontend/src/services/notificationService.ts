@@ -83,10 +83,6 @@ export const scheduleMedicationAlarm = async (
   });
 };
 
-/**
- * Cancela notificaciones locales programadas por esta app para medicamentos y vuelve a crear
- * las que aún están en el futuro (según el dashboard).
- */
 export async function syncServerMedicationAlarms(alarms: Alarm[]): Promise<void> {
   const ok = await ensureNotificationSetup();
   if (!ok) return;
