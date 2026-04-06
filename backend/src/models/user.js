@@ -88,6 +88,15 @@ const User = {
             WHERE id = ?`;
 
         db.query(sql, [first_name, last_name, email, phone, userId], callback);
+    },
+    // CAMBIAR ESTADO DEL USUARIO (1 activo, 0 suspendido)
+    updateState: (userId, state, callback) => {
+        const sql = `
+            UPDATE users
+            SET state = ?
+            WHERE id = ?`;
+
+        db.query(sql, [state, userId], callback);
     }
 };
 

@@ -1,14 +1,6 @@
 import db from '../config/db.js';
 import bcrypt from 'bcrypt';
 
-// --- LISTAR CLÍNICAS ---
-export const getClinics = (req, res) => {
-    db.query(`SELECT id, name, address FROM locations ORDER BY name ASC`, (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: "Error al obtener clínicas" });
-        res.json({ success: true, clinics: results });
-    });
-};
-
 // --- REGISTRO DE CLÍNICA ---
 export const registerClinic = (req, res) => {
     const { name, address } = req.body;
@@ -70,5 +62,55 @@ export const registerDoctorWithCheck = async (req, res) => {
             console.error("Error de cifrado:", e);
             res.status(500).json({ success: false, message: "Error interno de servidor" });
         }
+    });
+};
+
+export const listClinicsAndDoctors = (req, res) => {
+    const clinicsSql = `
+        SELECT id, name, address
+        FROM locations
+        ORDER BY name ASC
+    `;
+
+    db.query(clinicsSql, (clinicsErr, clinicsResults) => {
+        if (clinicsErr) {
+            console.error("Error al listar clínicas:", clinicsErr);
+            return res.status(500).json({ success: false, message: "Error al obtener clínicas" });
+        }
+
+        db.query("SHOW COLUMNS FROM users LIKE 'clinica'", (schemaErr, schemaRows) => {
+            if (schemaErr) {
+                console.error("Error al validar esquema users:", schemaErr);
+                return res.status(500).json({ success: false, message: "Error al validar usuarios" });
+            }
+
+            const hasClinicaColumn = Array.isArray(schemaRows) && schemaRows.length > 0;
+            const doctorsSql = hasClinicaColumn
+                ? `
+                    SELECT id, first_name, last_name, email, clinica, state
+                    FROM users
+                    WHERE roles_id = 4
+                    ORDER BY first_name ASC, last_name ASC
+                  `
+                : `
+                    SELECT id, first_name, last_name, email, state
+                    FROM users
+                    WHERE roles_id = 4
+                    ORDER BY first_name ASC, last_name ASC
+                  `;
+
+            db.query(doctorsSql, (doctorsErr, doctorsResults) => {
+                if (doctorsErr) {
+                    console.error("Error al listar médicos:", doctorsErr);
+                    return res.status(500).json({ success: false, message: "Error al obtener médicos" });
+                }
+
+                return res.json({
+                    success: true,
+                    clinics: clinicsResults || [],
+                    doctors: doctorsResults || [],
+                });
+            });
+        });
     });
 };

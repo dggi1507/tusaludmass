@@ -137,3 +137,27 @@ export const updateUser = (req, res) => {
         res.json({ success: true, message: 'Datos actualizados correctamente' });
     });
 };
+export const updateUserState = (req, res) => {
+    const { id } = req.params;
+    const { state } = req.body;
+
+    if (state !== 0 && state !== 1) {
+        return res.status(400).json({ success: false, message: 'Estado inválido' });
+    }
+
+    User.updateState(id, state, (err, result) => {
+        if (err) {
+            console.error('Error al actualizar estado:', err);
+            return res.status(500).json({ success: false, message: 'Error al actualizar estado del usuario' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+        }
+
+        return res.json({
+            success: true,
+            message: state === 0 ? 'Usuario suspendido correctamente' : 'Usuario activado correctamente'
+        });
+    });
+};

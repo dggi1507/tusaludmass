@@ -12,13 +12,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { getAllUsersProvider, UserData } from '../../src/services/adminService';
+import { getAllUsersProvider, toggleUserStatusProvider, UserData } from '../../src/services/adminService';
 
 export default function UsersScreen() {
   const router = useRouter();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [showSuspended, setShowSuspended] = useState(false);
 
   const AZUL_CORRECTO = '#004080'; // El azul que solicitaste
 
@@ -56,19 +57,39 @@ export default function UsersScreen() {
   };
 
   const handleSuspend = (item: UserData) => {
+    const targetState = item.state === 1 ? 0 : 1;
+    const actionLabel = targetState === 0 ? "suspender" : "activar";
+
     Alert.alert(
       "Confirmar Acción",
-      `¿Estás seguro de que deseas suspender a ${item.username}?`,
+      `¿Estás seguro de que deseas ${actionLabel} a ${item.username}?`,
       [
         { text: "Cancelar", style: "cancel" },
         { 
-          text: "Suspender", 
+          text: targetState === 0 ? "Suspender" : "Activar", 
           style: "destructive", 
-          onPress: () => Alert.alert("Éxito", "Usuario suspendido correctamente.") 
+          onPress: async () => {
+            const result = await toggleUserStatusProvider(item.id, targetState);
+
+            if (!result.success) {
+              Alert.alert("Error", "No se pudo actualizar el estado del usuario.");
+              return;
+            }
+
+            setUsers((prevUsers) =>
+              prevUsers.map((user) =>
+                user.id === item.id ? { ...user, state: targetState } : user
+              )
+            );
+            setExpandedId(null);
+            Alert.alert("Éxito", targetState === 0 ? "Usuario suspendido correctamente." : "Usuario activado correctamente.");
+          }
         }
       ]
     );
   };
+
+  const visibleUsers = users.filter((user) => showSuspended ? user.state === 0 : user.state === 1);
 
   const renderUserItem = ({ item }: { item: UserData }) => {
     const displayName = item.first_name 
@@ -120,8 +141,8 @@ export default function UsersScreen() {
               style={styles.menuOption} 
               onPress={() => handleSuspend(item)}
             >
-              <Ionicons name="ban-outline" size={18} color="#E74C3C" />
-              <Text style={[styles.menuOptionText, { color: '#E74C3C' }]}>Suspender</Text>
+              <Ionicons name={item.state === 1 ? "ban-outline" : "checkmark-circle-outline"} size={18} color={item.state === 1 ? "#E74C3C" : "#27AE60"} />
+              <Text style={[styles.menuOptionText, { color: item.state === 1 ? '#E74C3C' : '#27AE60' }]}>{item.state === 1 ? "Suspender" : "Activar"}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -141,6 +162,22 @@ export default function UsersScreen() {
           <Ionicons name="refresh" size={24} color={AZUL_CORRECTO} />
         </TouchableOpacity>
       </View>
+      <View style={styles.filterRow}>
+        <Text style={styles.filterLabel}>
+          {showSuspended ? 'Mostrando suspendidos' : 'Mostrando activos'}
+        </Text>
+        <TouchableOpacity
+          style={[styles.filterButton, { backgroundColor: showSuspended ? '#7F8C8D' : AZUL_CORRECTO }]}
+          onPress={() => {
+            setExpandedId(null);
+            setShowSuspended((prev) => !prev);
+          }}
+        >
+          <Text style={styles.filterButtonText}>
+            {showSuspended ? 'Ver activos' : 'Ver suspendidos'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {loading ? (
         <View style={styles.loaderContainer}>
@@ -149,12 +186,14 @@ export default function UsersScreen() {
         </View>
       ) : (
         <FlatList
-          data={users}
+          data={visibleUsers}
           renderItem={renderUserItem}
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No hay usuarios registrados.</Text>
+            <Text style={styles.emptyText}>
+              {showSuspended ? 'No hay usuarios suspendidos.' : 'No hay usuarios activos.'}
+            </Text>
           }
         />
       )}
@@ -178,6 +217,23 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   headerTitle: { fontSize: 19, fontWeight: 'bold', color: '#333' },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EBEDEF',
+  },
+  filterLabel: { color: '#566573', fontWeight: '600' },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 9,
+  },
+  filterButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loaderText: { marginTop: 10, color: '#666', fontWeight: '500' },
   listContent: { padding: 15 },

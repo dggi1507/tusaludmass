@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { getAdminSummaryProvider } from '../../services/adminService';
 
 export default function AdminScreen({ user }: any) {
   const router = useRouter();
@@ -20,19 +21,39 @@ export default function AdminScreen({ user }: any) {
   const [activeBtn, setActiveBtn] = useState<string | null>(null);
 
   const [stats, setStats] = useState({
-    activeUsers: '1.240',
-    appointments: '320',
-    reminders: '1.800',
-    alarms: '95'
+    activeUsers: '0',
+    appointments: '0',
+    reminders: '0',
+    alarms: '0'
   });
+  const loadSummary = async (selectedFilter: 'Mensual' | 'Semanal' | 'Hoy') => {
+    setLoading(true);
+    const result = await getAdminSummaryProvider(selectedFilter);
+
+    if (result.success && result.summary) {
+      setStats({
+        activeUsers: result.summary.activeUsers.toLocaleString('es-CO'),
+        appointments: result.summary.appointments.toLocaleString('es-CO'),
+        reminders: result.summary.reminders.toLocaleString('es-CO'),
+        alarms: result.summary.alarms.toLocaleString('es-CO'),
+      });
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadSummary(filter);
+  }, []);
 
   const handleFilterChange = (selectedFilter: 'Mensual' | 'Semanal' | 'Hoy') => {
     setFilter(selectedFilter);
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-    }, 500);
+    loadSummary(selectedFilter);
   };
+  const appointmentsLabel =
+    filter === 'Hoy' ? 'Citas registradas hoy' : filter === 'Semanal' ? 'Citas registradas semana' : 'Citas registradas mes';
+  const remindersLabel =
+    filter === 'Hoy' ? 'Recordatorios de hoy' : filter === 'Semanal' ? 'Recordatorios de semana' : 'Recordatorios de mes';
 
   const navigateTo = (path: string, btnName: string) => {
     setActiveBtn(btnName);
@@ -71,8 +92,8 @@ export default function AdminScreen({ user }: any) {
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
-          {/* RESUMEN GENERAL Y FILTROS */}
-          <View style={styles.summaryHeader}>
+         {/* RESUMEN GENERAL Y FILTROS */}
+         <View style={styles.summaryHeader}>
             <Text style={styles.summaryTitle}>Resumen General</Text>
             <View style={styles.filterContainer}>
               {(['Mensual', 'Semanal', 'Hoy'] as const).map((item) => (
@@ -94,17 +115,17 @@ export default function AdminScreen({ user }: any) {
             <View style={styles.statsGrid}>
               <View style={[styles.statCard, { backgroundColor: '#3498DB' }]}>
                 <Ionicons name="people" size={24} color="white" />
-                <Text style={styles.statLabel}>Usuarios activos hoy</Text>
+                <Text style={styles.statLabel}>Usuarios activos</Text>
                 <Text style={styles.statValue}>{stats.activeUsers}</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: '#1ABC9C' }]}>
                 <Ionicons name="calendar" size={24} color="white" />
-                <Text style={styles.statLabel}>Citas registradas hoy</Text>
+                <Text style={styles.statLabel}>{appointmentsLabel}</Text>
                 <Text style={styles.statValue}>{stats.appointments}</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: '#9B51E0' }]}>
                 <MaterialCommunityIcons name="chat-processing" size={24} color="white" />
-                <Text style={styles.statLabel}>Recordatorios enviados</Text>
+                <Text style={styles.statLabel}>{remindersLabel}</Text>
                 <Text style={styles.statValue}>{stats.reminders}</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: '#E74C3C' }]}>
