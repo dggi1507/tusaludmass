@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import type { Medicine, PatientLinked } from '../../types/database';
@@ -19,6 +20,7 @@ import {
 type Toma = { id: string; hora: Date; activa: boolean; };
 
 const MedicamentoScreen: React.FC<{ caregiverId: number }> = ({ caregiverId }) => {
+  const router = useRouter();
   const [patient, setPatient] = useState<PatientLinked | null>(null);
   const [filteredCatalog, setFilteredCatalog] = useState<Medicine[]>([]);
   const [assigned, setAssigned] = useState<any[]>([]); // Estado para medicamentos asignados
@@ -220,7 +222,9 @@ const MedicamentoScreen: React.FC<{ caregiverId: number }> = ({ caregiverId }) =
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}><Ionicons name="chevron-back" size={28} color="black" /></TouchableOpacity>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.navigate('/cuidador')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="chevron-back" size={24} color="#004080" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Agregar Medicamento</Text>
       </View>
 
@@ -234,7 +238,7 @@ const MedicamentoScreen: React.FC<{ caregiverId: number }> = ({ caregiverId }) =
           <Text style={styles.label}>Nombre Medicamento</Text>
           <View style={styles.autocompleteContainer}>
             <TextInput style={styles.input} value={nombreBusqueda} onChangeText={handleBusqueda} placeholder="Ej: Acetaminofen" />
-            {loadingSearch && <ActivityIndicator style={styles.loaderSearch} color="#2196F3" />}
+            {loadingSearch && <ActivityIndicator style={styles.loaderSearch} color="#004080" />}
             {showSuggestions && (
               <View style={styles.suggestions}>
                 {filteredCatalog.map(m => (
@@ -282,7 +286,7 @@ const MedicamentoScreen: React.FC<{ caregiverId: number }> = ({ caregiverId }) =
 
           <Text style={styles.label}>Horario Primera Toma</Text>
           <TouchableOpacity style={[styles.input, styles.rowAlignCenter]} onPress={() => setShowPicker('hora')}>
-            <Ionicons name="time-outline" size={22} color="#2196F3" style={{ marginRight: 10 }} />
+            <Ionicons name="time-outline" size={22} color="#004080" style={{ marginRight: 10 }} />
             <Text style={{ fontSize: 16 }}>{horaInicio.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
           </TouchableOpacity>
 
@@ -367,7 +371,7 @@ const MedicamentoScreen: React.FC<{ caregiverId: number }> = ({ caregiverId }) =
             assigned.map((pm) => (
               <View key={pm.id} style={styles.assignedItem}>
                 <View style={styles.rowAlignCenter}>
-                  <Ionicons name="medical" size={20} color="#2196F3" style={{ marginRight: 10 }} />
+                  <Ionicons name="medical" size={20} color="#004080" style={{ marginRight: 10 }} />
                   <View>
                     <Text style={styles.assignedName}>{pm.medicine_name || 'Sin nombre'}</Text>
                     <Text style={styles.assignedMeta}>
@@ -407,9 +411,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
   header: { flexDirection: 'row', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderColor: '#EEE' },
   backButton: { marginRight: 15 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold' },
   content: { padding: 20 },
-  patientLabel: { color: '#2196F3', fontWeight: 'bold', marginBottom: 15, fontSize: 16 },
+  patientLabel: { color: '#004080', fontWeight: 'bold', marginBottom: 15, fontSize: 16 },
   label: { fontWeight: 'bold', marginTop: 20, marginBottom: 8, color: '#333', fontSize: 16 },
   autocompleteContainer: { zIndex: 1000 },
   input: { backgroundColor: '#F8F9FA', borderRadius: 12, padding: 15, borderWidth: 1, borderColor: '#E9ECEF' },
@@ -417,7 +421,7 @@ const styles = StyleSheet.create({
   rowAlignCenter: { flexDirection: 'row', alignItems: 'center' },
   pickerBox: { flex: 1.2, backgroundColor: '#F8F9FA', borderRadius: 12, borderWidth: 1, borderColor: '#E9ECEF', overflow: 'hidden' },
   dateBtn: { flex: 1, backgroundColor: '#F8F9FA', padding: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E9ECEF' },
-  calcBtn: { backgroundColor: '#2196F3', padding: 18, borderRadius: 12, marginTop: 25, alignItems: 'center' },
+  calcBtn: { backgroundColor: '#004080', padding: 18, borderRadius: 12, marginTop: 25, alignItems: 'center' },
   calcBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
   pizarraContainer: { marginTop: 20, backgroundColor: '#F8F9FA', padding: 15, borderRadius: 15 },
   tomaRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderColor: '#DEE2E6', alignItems: 'center' },
@@ -456,7 +460,7 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
   optionTextActive: {
-    color: '#2196F3',
+    color: '#004080',
     fontWeight: 'bold'
   },
   helperText: {

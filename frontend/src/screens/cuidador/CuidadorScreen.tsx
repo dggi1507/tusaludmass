@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View, Text, StyleSheet, ScrollView, Image, TouchableOpacity,
   ActivityIndicator, Linking, Alert, Modal
@@ -157,9 +158,12 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
     return () => clearInterval(interval);
   }, [patient?.id, pacienteInfo?.id]);
 
-  useEffect(() => {
-    fetchAlarmasReales();
-  }, [patient?.id, pacienteInfo?.id]);
+  // Re-fetch alarmas cada vez que el tab gana foco (ej: al volver desde Medicamento)
+  useFocusEffect(
+    useCallback(() => {
+      fetchAlarmasReales();
+    }, [patient?.id, pacienteInfo?.id])
+  );
 
   // ── Handlers opciones ────────────────────────────────────────────────────
   const handleOmitir = (notif: NotificacionEmergente) => {
@@ -275,11 +279,11 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
           </Text>
 
           {loadingAlarmas ? (
-            <ActivityIndicator color="#2196F3" />
+            <ActivityIndicator color="#004080" />
           ) : alarmasDia.length > 0 ? (
             alarmasDia.map((notif) => (
               <View key={notif.id} style={styles.timelineItem}>
-                <View style={[styles.pillIcon, { backgroundColor: '#2196F3' }]}>
+                <View style={[styles.pillIcon, { backgroundColor: '#004080' }]}>
                   <FontAwesome5 name="pills" size={14} color="#FFF" />
                 </View>
                 <View style={styles.activityInfo}>
@@ -305,7 +309,7 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
         <Text style={styles.sectionLabel}>Ubicación de {currentPatientName}</Text>
         <View style={styles.mapContainer}>
           {loadingMap ? (
-            <ActivityIndicator size="large" color="#2196F3" />
+            <ActivityIndicator size="large" color="#004080" />
           ) : pacienteInfo?.latitude ? (
             <MapView
               provider={PROVIDER_GOOGLE}
@@ -323,7 +327,7 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
                 description="Ubicación actual"
               >
                 <View style={styles.markerWrapper}>
-                  <Ionicons name="person-circle" size={40} color="#2196F3" />
+                  <Ionicons name="person-circle" size={40} color="#004080" />
                 </View>
               </Marker>
             </MapView>
@@ -368,8 +372,8 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
                 setShowEditPicker(true);
               }}
             >
-              <Ionicons name="pencil-outline" size={20} color="#2196F3" />
-              <Text style={[styles.sheetOptionText, { color: '#2196F3' }]}>Editar hora</Text>
+              <Ionicons name="pencil-outline" size={20} color="#004080" />
+              <Text style={[styles.sheetOptionText, { color: '#004080' }]}>Editar hora</Text>
             </TouchableOpacity>
           )}
 
@@ -425,7 +429,7 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
-  header: { backgroundColor: '#2196F3', paddingHorizontal: 20, paddingVertical: 15, alignItems: 'flex-start' },
+  header: { backgroundColor: '#004080', paddingHorizontal: 20, paddingVertical: 15, alignItems: 'flex-start' },
   headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold', letterSpacing: 2 },
   scrollContent: { padding: 20 },
   welcomeSection: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
@@ -440,11 +444,11 @@ const styles = StyleSheet.create({
   monthTitle: { fontSize: 17, fontWeight: 'bold', color: '#333' },
   calendarStrip: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   calendarDay: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 6, borderRadius: 10, minWidth: 36 },
-  calendarDaySelected: { backgroundColor: '#2196F3' },
+  calendarDaySelected: { backgroundColor: '#004080' },
   calendarDayNum: { fontSize: 14, color: '#999' },
   calendarDayLabel: { fontSize: 11, color: '#999' },
   calendarDayTextActive: { color: '#FFF', fontWeight: 'bold' },
-  todayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#2196F3', marginTop: 3 },
+  todayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#004080', marginTop: 3 },
 
   subSubtitle: { fontSize: 12, color: '#999', textAlign: 'center', marginBottom: 20 },
   emptyText: { textAlign: 'center', color: '#999', fontSize: 12 },
@@ -456,7 +460,7 @@ const styles = StyleSheet.create({
   activityRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   activityTitle: { fontWeight: 'bold', fontSize: 14, flex: 1, marginRight: 8 },
   activityDetail: { color: '#666', fontSize: 12 },
-  activityTime: { fontSize: 12, color: '#2196F3', marginTop: 4 },
+  activityTime: { fontSize: 12, color: '#004080', marginTop: 4 },
 
   // Mapa
   sectionLabel: { fontSize: 16, fontWeight: 'bold', marginTop: 25, marginBottom: 10 },
@@ -470,7 +474,7 @@ const styles = StyleSheet.create({
   bottomSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34 },
   bottomSheetHandle: { width: 40, height: 4, backgroundColor: '#DDD', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   bottomSheetTitle: { fontWeight: 'bold', fontSize: 15, color: '#333', marginBottom: 4 },
-  bottomSheetTime: { color: '#2196F3', fontSize: 13, marginBottom: 16 },
+  bottomSheetTime: { color: '#004080', fontSize: 13, marginBottom: 16 },
   sheetOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderTopWidth: 1, borderColor: '#F0F0F0' },
   sheetOptionText: { fontSize: 15, marginLeft: 12, fontWeight: '500' },
   sheetCancelRow: { justifyContent: 'center' },
