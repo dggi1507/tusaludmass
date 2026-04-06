@@ -62,3 +62,17 @@ export async function editarAlarma(alarmId: number, alarm_datetime: string) {
 export async function eliminarAlarma(alarmId: number) {
   return apiDelete<{ success: boolean }>(`/alarms/${alarmId}`);
 }
+
+export async function linkPatientToCaregiver(caregiverId: number, link_code: string) {
+  return apiPost<{ success: boolean; message?: string; patientId?: number }>(
+    `/caregivers/${caregiverId}/link-patient`,
+    { link_code }
+  );
+}
+
+export async function updateUserProfile(
+  userId: number,
+  data: { first_name: string; last_name: string; email: string; phone: string }
+) {
+  return apiPut<{ success: boolean; message?: string }>(`/update/${userId}`, data);
+}

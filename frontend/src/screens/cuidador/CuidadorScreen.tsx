@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { 
   View, 
   Text, 
@@ -9,8 +10,7 @@ import {
   ActivityIndicator, 
   Linking, 
   Alert, 
-  Modal,
-  Dimensions 
+  Modal 
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -93,6 +93,7 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
   const weekDays = generateWeekDays(weekOffset);
   const alarmasDia = todasLasAlarmas.filter(n => alarmToLocalDateString(n.alarm_datetime) === selectedDate);
   const isPastAlarm = menuNotif ? new Date(menuNotif.alarm_datetime.replace(' ', 'T')) < new Date() : false;
+  const esFechaHoy = selectedDate === todayString();
 
   const firstDayOfWeek = new Date();
   firstDayOfWeek.setDate(firstDayOfWeek.getDate() - firstDayOfWeek.getDay() + weekOffset * 7);
@@ -134,18 +135,34 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
     }
   };
 
+  const handleOmitir = async (alarma: NotificacionEmergente) => {
+    try {
+      const res = await omitirAlarma(alarma.id);
+      if (res.success) {
+        Alert.alert("Éxito", "Toma omitida correctamente");
+        fetchAlarmasReales();
+      }
+    } catch (e) {
+      Alert.alert("Error", "No se pudo omitir");
+    } finally {
+      setMenuNotif(null);
+    }
+  };
+
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      await Location.requestForegroundPermissionsAsync();
       fetchLocation();
     })();
     const interval = setInterval(fetchLocation, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    fetchAlarmasReales();
-  }, [patient?.id, pacienteInfo?.id]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchAlarmasReales();
+    }, [patient?.id, pacienteInfo?.id])
+  );
 
   const handleCall = () => {
     const phone = pacienteInfo?.phone || (patient as any)?.phone;
@@ -153,9 +170,6 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
     else Alert.alert("Error", "No hay teléfono registrado.");
   };
 
-  const lat = parseFloat(pacienteInfo?.latitude);
-  const lng = parseFloat(pacienteInfo?.longitude);
-  const hasValidLocation = !isNaN(lat) && !isNaN(lng) && lat !== 0;
   const currentPatientName = pacienteInfo?.first_name || (patient ? getDisplayName(patient) : 'Paciente');
 
   return (
@@ -194,10 +208,16 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
             ))}
           </View>
 
-          {loadingAlarmas ? <ActivityIndicator color="#2196F3" /> : alarmasDia.length > 0 ? (
+          <Text style={styles.subSubtitle}>
+            {alarmasDia.length} toma(s) {esFechaHoy ? 'hoy' : `el ${selectedDate}`}
+          </Text>
+
+          {loadingAlarmas ? (
+            <ActivityIndicator color="#004080" />
+          ) : alarmasDia.length > 0 ? (
             alarmasDia.map((notif) => (
               <View key={notif.id} style={styles.timelineItem}>
-                <View style={[styles.pillIcon, { backgroundColor: '#2196F3' }]}><FontAwesome5 name="pills" size={14} color="#FFF" /></View>
+                <View style={[styles.pillIcon, { backgroundColor: '#004080' }]}><FontAwesome5 name="pills" size={14} color="#FFF" /></View>
                 <View style={styles.activityInfo}>
                   <View style={styles.activityRow}>
                     <Text style={styles.activityTitle} numberOfLines={1}>{notif.title}</Text>
@@ -212,10 +232,21 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
 
         <Text style={styles.sectionLabel}>Ubicación de {currentPatientName}</Text>
         <View style={styles.mapContainer}>
-          {loadingMap ? <ActivityIndicator size="large" color="#2196F3" /> : hasValidLocation ? (
-            <MapView provider={PROVIDER_GOOGLE} style={styles.map} initialRegion={{ latitude: lat, longitude: lng, latitudeDelta: 0.005, longitudeDelta: 0.005 }}>
-              <Marker coordinate={{ latitude: lat, longitude: lng }} title={currentPatientName}>
-                <View style={styles.markerWrapper}><Ionicons name="person-circle" size={40} color="#2196F3" /></View>
+          {loadingMap ? (
+            <ActivityIndicator size="large" color="#004080" />
+          ) : pacienteInfo?.latitude ? (
+            <MapView
+              provider={PROVIDER_GOOGLE}
+              style={StyleSheet.absoluteFillObject}
+              region={{
+                latitude: parseFloat(pacienteInfo.latitude),
+                longitude: parseFloat(pacienteInfo.longitude),
+                latitudeDelta: 0.005,
+                longitudeDelta: 0.005,
+              }}
+            >
+              <Marker coordinate={{ latitude: parseFloat(pacienteInfo.latitude), longitude: parseFloat(pacienteInfo.longitude) }} title={currentPatientName}>
+                <View style={styles.markerWrapper}><Ionicons name="person-circle" size={40} color="#004080" /></View>
               </Marker>
             </MapView>
           ) : <Text style={styles.noLocationText}>Buscando señal GPS...</Text>}
@@ -226,14 +257,23 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
         </View>
       </ScrollView>
 
-      {/* Modal de opciones */}
       <Modal visible={!!menuNotif} transparent animationType="slide">
         <TouchableOpacity style={styles.modalBackdrop} onPress={() => setMenuNotif(null)} />
         <View style={styles.bottomSheet}>
-          <Text style={styles.bottomSheetTitle}>{menuNotif?.title}</Text>
-          <TouchableOpacity style={styles.sheetOption} onPress={() => { setMenuNotif(null); setAlarmEditando(menuNotif); setShowEditPicker(true); }}>
-            <Ionicons name="pencil-outline" size={20} color="#2196F3" />
-            <Text style={[styles.sheetOptionText, { color: '#2196F3' }]}>Editar hora</Text>
+          <View style={styles.bottomSheetHandle} />
+          <Text style={styles.bottomSheetTitle} numberOfLines={2}>{menuNotif?.title}</Text>
+          <Text style={styles.bottomSheetTime}>{menuNotif ? formatAlarmTime(menuNotif.alarm_datetime) : ''}</Text>
+
+          {!isPastAlarm && (
+            <TouchableOpacity style={styles.sheetOption} onPress={() => { setMenuNotif(null); setAlarmEditando(menuNotif); setShowEditPicker(true); }}>
+              <Ionicons name="pencil-outline" size={20} color="#004080" />
+              <Text style={[styles.sheetOptionText, { color: '#004080' }]}>Editar hora</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={styles.sheetOption} onPress={() => handleOmitir(menuNotif!)}>
+            <Ionicons name="close-circle-outline" size={20} color="#FF9800" />
+            <Text style={[styles.sheetOptionText, { color: '#FF9800' }]}>Omitir toma</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.sheetOption} onPress={() => setMenuNotif(null)}>
             <Text style={styles.sheetCancelText}>Cerrar</Text>
@@ -246,42 +286,44 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
-  header: { backgroundColor: '#2196F3', padding: 15 },
-  headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
+  header: { backgroundColor: '#004080', paddingHorizontal: 20, paddingVertical: 15, alignItems: 'flex-start' },
+  headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold', letterSpacing: 2 },
   scrollContent: { padding: 20 },
   welcomeSection: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 15 },
   avatarPlaceholder: { width: 50, height: 50, borderRadius: 25, marginRight: 15, backgroundColor: '#F0F0F0', justifyContent: 'center', alignItems: 'center' },
-  greeting: { fontSize: 13, color: '#666' },
-  userName: { fontSize: 18, fontWeight: 'bold' },
-  summaryCard: { backgroundColor: '#F8F9FA', borderRadius: 15, padding: 15, elevation: 2 },
-  calendarNavRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  monthTitle: { fontSize: 16, fontWeight: 'bold' },
-  calendarStrip: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  calendarDay: { alignItems: 'center', padding: 8, borderRadius: 10, minWidth: 40 },
-  calendarDaySelected: { backgroundColor: '#2196F3' },
-  calendarDayNum: { fontSize: 14, color: '#666' },
+  greeting: { fontSize: 14, color: '#666' },
+  userName: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  summaryCard: { backgroundColor: '#F8F9FA', borderRadius: 15, padding: 20, elevation: 2 },
+  calendarNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  monthTitle: { fontSize: 17, fontWeight: 'bold', color: '#333' },
+  calendarStrip: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  calendarDay: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 6, borderRadius: 10, minWidth: 36 },
+  calendarDaySelected: { backgroundColor: '#004080' },
+  calendarDayNum: { fontSize: 14, color: '#999' },
   calendarDayLabel: { fontSize: 11, color: '#999' },
   calendarDayTextActive: { color: '#FFF', fontWeight: 'bold' },
-  todayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#2196F3', marginTop: 2 },
-  timelineItem: { flexDirection: 'row', marginBottom: 10 },
-  pillIcon: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  activityInfo: { flex: 1, backgroundColor: '#FFF', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#EEE' },
-  activityRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  activityTitle: { fontWeight: 'bold', fontSize: 14, flex: 1 },
-  activityTime: { fontSize: 12, color: '#2196F3', marginTop: 5 },
-  emptyText: { textAlign: 'center', color: '#999', padding: 10 },
-  sectionLabel: { fontSize: 16, fontWeight: 'bold', marginTop: 20, marginBottom: 10 },
-  mapContainer: { height: 200, borderRadius: 15, overflow: 'hidden', backgroundColor: '#EEE' },
-  map: { flex: 1 },
-  locationOverlay: { position: 'absolute', bottom: 10, left: 10, backgroundColor: '#FFF', padding: 8, borderRadius: 20, flexDirection: 'row', elevation: 3 },
-  locationText: { marginLeft: 5, fontWeight: 'bold', color: '#004282' },
-  markerWrapper: { backgroundColor: '#FFF', borderRadius: 20, padding: 2 },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  bottomSheet: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
-  bottomSheetTitle: { fontWeight: 'bold', fontSize: 16, marginBottom: 20 },
-  sheetOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderTopWidth: 1, borderTopColor: '#EEE' },
-  sheetOptionText: { marginLeft: 10, fontSize: 15 },
-  sheetCancelText: { color: '#666', textAlign: 'center', width: '100%' },
-  noLocationText: { textAlign: 'center', marginTop: 80, color: '#999' }
+  todayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#004080', marginTop: 3 },
+  subSubtitle: { fontSize: 12, color: '#999', textAlign: 'center', marginBottom: 20 },
+  timelineItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
+  pillIcon: { width: 28, height: 28, borderRadius: 14, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
+  activityInfo: { flex: 1, backgroundColor: '#FFF', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' },
+  activityRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  activityTitle: { fontWeight: 'bold', fontSize: 14, flex: 1, marginRight: 8 },
+  activityTime: { fontSize: 12, color: '#004080', marginTop: 4 },
+  emptyText: { textAlign: 'center', color: '#999', fontSize: 12 },
+  sectionLabel: { fontSize: 16, fontWeight: 'bold', marginTop: 25, marginBottom: 10 },
+  mapContainer: { height: 250, borderRadius: 15, backgroundColor: '#E0E0E0', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
+  locationOverlay: { position: 'absolute', bottom: 10, left: 10, backgroundColor: '#FFF', padding: 10, borderRadius: 20, flexDirection: 'row', alignItems: 'center', elevation: 3 },
+  locationText: { marginLeft: 8, fontWeight: 'bold', color: '#004282' },
+  markerWrapper: { backgroundColor: 'white', borderRadius: 20, padding: 2, elevation: 5 },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  bottomSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34 },
+  bottomSheetHandle: { width: 40, height: 4, backgroundColor: '#DDD', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  bottomSheetTitle: { fontWeight: 'bold', fontSize: 15, color: '#333', marginBottom: 4 },
+  bottomSheetTime: { color: '#004080', fontSize: 13, marginBottom: 16 },
+  sheetOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderTopWidth: 1, borderColor: '#F0F0F0' },
+  sheetOptionText: { fontSize: 15, marginLeft: 12, fontWeight: '500' },
+  sheetCancelText: { textAlign: 'center', color: '#666', fontSize: 15, fontWeight: '500', width: '100%' },
+  noLocationText: { textAlign: 'center', color: '#999' }
 });
