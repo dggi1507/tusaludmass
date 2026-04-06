@@ -70,6 +70,15 @@ export async function linkPatientToCaregiver(caregiverId: number, link_code: str
   );
 }
 
+export async function createReporte(payload: {
+  caregiver_id: number;
+  titulo: string;
+  descripcion: string;
+  categoria?: string;
+}) {
+  return apiPost<{ success: boolean; id: number }>('/reportes', payload);
+}
+
 export async function updateUserProfile(
   userId: number,
   data: { first_name: string; last_name: string; email: string; phone: string }

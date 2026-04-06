@@ -23,9 +23,16 @@ export interface MedicineData {
 
 export interface ReportsData {
     id: number;
-    userName: string;
-    reason: string;
-    date: string;
+    caregiver_id: number;
+    titulo: string;
+    descripcion: string;
+    categoria: string;
+    estado: number; // 0=pendiente, 1=revisado, 2=resuelto
+    created_at: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    username?: string;
+    email?: string;
 }
 
 export interface AdminResponse {
@@ -124,5 +131,28 @@ export const getAllMedicinesProvider = async (): Promise<{success: boolean, medi
 
 // 5. Reportes
 export const getAllReportsProvider = async (): Promise<{success: boolean, reports?: ReportsData[], message?: string}> => {
-    return { success: true, reports: []};
+    try {
+        const response = await fetch(`${API_URL}/reportes`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        return await response.json();
+    } catch (error) {
+        console.error("Error en getAllReportsProvider:", error);
+        return { success: false, message: "Error de conexión con el servidor." };
+    }
+};
+
+export const updateReporteEstadoProvider = async (reporteId: number, estado: number): Promise<{success: boolean, message?: string}> => {
+    try {
+        const response = await fetch(`${API_URL}/reportes/${reporteId}/estado`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estado }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error("Error en updateReporteEstadoProvider:", error);
+        return { success: false, message: "Error de conexión." };
+    }
 };

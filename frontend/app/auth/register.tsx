@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 import { ENDPOINTS } from '../../src/config/api';
 import { TERMINOS_TEXTO, POLITICA_TEXTO } from '../../src/constants/legalContent';
 
@@ -53,19 +55,34 @@ export default function RegisterPage() {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [age, setAge] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [birthDate, setBirthDate] = useState<Date | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const [roleType, setRoleType] = useState<'paciente' | 'cuidador'>('paciente');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [showPassword, setShowPassword] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
 
+  const passwordRules = [
+    { label: 'Mínimo 8 caracteres', ok: password.length >= 8 },
+    { label: 'Una letra mayúscula', ok: /[A-Z]/.test(password) },
+    { label: 'Una letra minúscula', ok: /[a-z]/.test(password) },
+    { label: 'Un número', ok: /\d/.test(password) },
+  ];
+
   const handleRegister = async () => {
-    if (!firstName || !lastName || (roleType === 'paciente' && !age) || (roleType === 'cuidador' && (!email || !password))) {
-      Alert.alert("Error", "Por favor completa todos los campos requeridos.");
+    if (!firstName || !lastName || !username || !email || !password || !phone || !birthDate) {
+      Alert.alert("Error", "Por favor completa todos los campos.");
+      return;
+    }
+    if (!passwordRules.every(r => r.ok)) {
+      Alert.alert("Error", "La contraseña no cumple todos los requisitos.");
       return;
     }
     if (!acceptedTerms) {
@@ -80,16 +97,27 @@ export default function RegisterPage() {
         body: JSON.stringify({
           first_name: firstName,
           last_name: lastName,
-          age: roleType === 'paciente' ? age : null,
-          email: roleType === 'cuidador' ? email : null,
-          password: roleType === 'cuidador' ? password : null,
-          roleType: roleType
+          username,
+          email,
+          password,
+          phone,
+          birth_date: birthDate ? birthDate.toISOString().split('T')[0] : '',
+          roleType,
         }),
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        Alert.alert("¡Éxito!", "Registro completado.");
-        router.push('/auth/login');
+        if (roleType === 'paciente' && data.link_code) {
+          Alert.alert(
+            "¡Registro exitoso!",
+            `Tu código de vinculación es:\n\n${data.link_code}\n\nGuárdalo, lo necesitarás para conectarte con tu cuidador.`,
+            [{ text: "Entendido", onPress: () => router.push('/auth/login') }]
+          );
+        } else {
+          Alert.alert("¡Éxito!", "Registro completado.", [
+            { text: "OK", onPress: () => router.push('/auth/login') }
+          ]);
+        }
       } else {
         Alert.alert("Error", data.message || "No se pudo registrar.");
       }
@@ -131,27 +159,71 @@ export default function RegisterPage() {
             <Text style={styles.label}>Apellido</Text>
             <TextInput style={styles.input} placeholder="Tu apellido" value={lastName} onChangeText={setLastName} />
 
-            {roleType === 'paciente' ? (
-              <>
-                <Text style={styles.label}>Edad</Text>
-                <TextInput
-                  style={styles.input} placeholder="Ej: 25" keyboardType="numeric"
-                  value={age} onChangeText={setAge}
-                />
-              </>
-            ) : (
-              <>
-                <Text style={styles.label}>Correo Electrónico</Text>
-                <TextInput
-                  style={styles.input} placeholder="ejemplo@correo.com" keyboardType="email-address"
-                  autoCapitalize="none" value={email} onChangeText={setEmail}
-                />
-                <Text style={styles.label}>Contraseña</Text>
-                <TextInput
-                  style={styles.input} placeholder="Mínimo 6 caracteres" secureTextEntry
-                  value={password} onChangeText={setPassword}
-                />
-              </>
+            <Text style={styles.label}>Nombre de usuario</Text>
+            <TextInput
+              style={styles.input} placeholder="Ej: juan123" autoCapitalize="none"
+              value={username} onChangeText={setUsername}
+            />
+
+            <Text style={styles.label}>Correo electrónico</Text>
+            <TextInput
+              style={styles.input} placeholder="ejemplo@correo.com" keyboardType="email-address"
+              autoCapitalize="none" value={email} onChangeText={setEmail}
+            />
+
+            <Text style={styles.label}>Contraseña</Text>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Mínimo 8 caracteres"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color="#7F8C8D" />
+              </TouchableOpacity>
+            </View>
+            {password.length > 0 && (
+              <View style={styles.rulesContainer}>
+                {passwordRules.map((rule) => (
+                  <View key={rule.label} style={styles.ruleRow}>
+                    <Ionicons
+                      name={rule.ok ? 'checkmark-circle' : 'close-circle'}
+                      size={16}
+                      color={rule.ok ? '#4CAF50' : '#E57373'}
+                    />
+                    <Text style={[styles.ruleText, { color: rule.ok ? '#4CAF50' : '#E57373' }]}>
+                      {' '}{rule.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={styles.label}>Teléfono</Text>
+            <TextInput
+              style={styles.input} placeholder="Ej: 3001234567" keyboardType="phone-pad"
+              value={phone} onChangeText={setPhone}
+            />
+
+            <Text style={styles.label}>Fecha de nacimiento</Text>
+            <TouchableOpacity style={styles.dateInput} onPress={() => setShowPicker(true)}>
+              <Text style={birthDate ? styles.dateText : styles.datePlaceholder}>
+                {birthDate ? birthDate.toLocaleDateString() : 'Seleccionar fecha'}
+              </Text>
+            </TouchableOpacity>
+
+            {showPicker && (
+              <DateTimePicker
+                value={birthDate ?? new Date(2000, 0, 1)}
+                mode="date"
+                maximumDate={new Date()}
+                onChange={(_, date) => {
+                  setShowPicker(false);
+                  if (date) setBirthDate(date);
+                }}
+              />
             )}
 
             {/* ACEPTACIÓN DE TÉRMINOS */}
@@ -235,5 +307,14 @@ const styles = StyleSheet.create({
   termsLink: { color: '#004080', fontWeight: '600', textDecorationLine: 'underline' },
   registerBtn: { backgroundColor: '#004080', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10 },
   registerBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
-  backLink: { textAlign: 'center', marginTop: 20, color: '#004080', fontWeight: '700' }
+  backLink: { textAlign: 'center', marginTop: 20, color: '#004080', fontWeight: '700' },
+  dateInput: { backgroundColor: '#F9FAFB', padding: 14, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: '#E5E7EB', justifyContent: 'center' },
+  dateText: { fontSize: 14, color: '#1a1a1a' },
+  datePlaceholder: { fontSize: 14, color: '#9CA3AF' },
+  passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: '#E5E7EB' },
+  passwordInput: { flex: 1, padding: 14 },
+  eyeBtn: { paddingHorizontal: 14 },
+  rulesContainer: { marginBottom: 15, gap: 4 },
+  ruleRow: { flexDirection: 'row', alignItems: 'center' },
+  ruleText: { fontSize: 12 },
 });

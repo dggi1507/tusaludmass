@@ -4,16 +4,14 @@ import bcrypt from 'bcrypt';
 const User = {
     // Método para registrar cualquier tipo de usuario (Paciente o Cuidador)
     create: (userData, callback) => {
-        const { first_name, last_name, email, password, roles_id } = userData;
-        
-        const username = email.split('@')[0];
+        const { first_name, last_name, username, email, password, phone, birth_date, roles_id, link_code } = userData;
 
         const sql = `
-            INSERT INTO users 
-            (username, first_name, last_name, password, email, state, roles_id) 
-            VALUES (?, ?, ?, ?, ?, 1, ?)`;
+            INSERT INTO users
+            (username, first_name, last_name, password, email, phone, birth_date, state, roles_id, link_code)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`;
 
-        db.query(sql, [username, first_name, last_name, password, email, roles_id], callback);
+        db.query(sql, [username, first_name, last_name, password, email, phone || null, birth_date || null, roles_id, link_code || null], callback);
     },
 
     authenticate: (username, password, callback) => {

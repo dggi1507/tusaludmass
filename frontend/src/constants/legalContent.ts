@@ -256,3 +256,114 @@ Responsable del Tratamiento: TuSalud+ | tusaludmas8@gmail.com | +57 322 5951399
 Superintendencia de Industria y Comercio (SIC): Carrera 13 No. 27-00, Bogotá D.C. | www.sic.gov.co | línea: 601 587 0000
 
 © 2026 TUSALUD+ — Política de Tratamiento de Datos Personales. República de Colombia.`;
+
+export const MANUAL_TEXTO = `TUSALUD+
+Manual de Usuario
+Versión: 1.0  |  Abril 2026
+
+════════════════════════════════
+PARTE 1: PACIENTE
+════════════════════════════════
+
+PANTALLA PRINCIPAL
+──────────────────
+Al iniciar sesión verás un encabezado azul con tu nombre y tu código de vinculación. Comparte ese código con tu cuidador para que pueda vincularse a tu cuenta.
+
+NAVEGACIÓN
+──────────
+En la parte inferior hay dos pestañas:
+  • Inicio — Resumen del día: alertas, citas y medicamentos próximos.
+  • Citas — Lista completa de todas tus citas programadas.
+
+SECCIÓN IMPORTANTES (pestaña Inicio)
+─────────────────────────────────────
+Muestra hasta 3 citas próximas y hasta 5 medicamentos del día.
+  • Tarjetas azules → Citas médicas con fecha y hora.
+  • Tarjetas moradas → Medicamentos con hora de toma.
+  • Tarjeta roja → Recordatorio activo de un medicamento pendiente de confirmar.
+
+ALARMAS DE MEDICAMENTOS
+────────────────────────
+Cuando sea la hora de tomar un medicamento aparecerá un aviso con el nombre y la dosis. Tienes tres opciones:
+  • YA LO TOMÉ — Marca la toma como completada.
+  • POSPONER (10 MIN) — Vuelve a avisarte en 10 minutos.
+  • NO LO TOMÉ — Cierra el recordatorio sin registrar la toma.
+
+El aviso también aparece al tocar la notificación en la barra del sistema.
+
+
+════════════════════════════════
+PARTE 2: CUIDADOR
+════════════════════════════════
+
+PANTALLA INICIO
+───────────────
+Vista principal con calendario de tomas y mapa de ubicación del paciente.
+
+Calendario de tomas:
+  • Navega semana a semana con las flechas ‹ ›.
+  • Toca cualquier día para ver sus alarmas de medicamentos.
+  • El punto azul indica el día de hoy.
+  • Las tomas completadas aparecen en verde.
+
+Opciones por toma (ícono ⋮):
+  • Editar hora — Cambia la hora de la toma (solo si aún no ha pasado).
+  • Omitir toma — Elimina esa toma específica.
+  • Eliminar — Borra la alarma permanentemente.
+
+Mapa de ubicación:
+  • Muestra la ubicación GPS del paciente, actualizada cada 15 segundos.
+  • El botón "Llamar a [paciente]" abre la marcación telefónica.
+
+PANTALLA AGENDAR CITA
+──────────────────────
+Crea citas médicas para el paciente vinculado.
+
+Campos:
+  • Cita — Descripción (ej: "Revisión cardiológica").
+  • Lugar — Nombre del centro o clínica.
+  • Fecha/Hora — Toca el campo para abrir el selector de fecha y hora.
+
+Toca Crear para guardar. El paciente verá la cita en su pantalla de Inicio.
+Debajo del formulario se lista el historial de citas programadas.
+
+PANTALLA MEDICAMENTOS
+──────────────────────
+Asigna un tratamiento con alarmas automáticas en 7 pasos:
+
+  1. Nombre — Escribe al menos 3 letras para buscar en el catálogo. Selecciona el medicamento de la lista.
+  2. Dosis — Ingresa el valor y elige la unidad: mg, ml, Tabletas o Gotas.
+  3. Frecuencia — Indica cada cuánto se toma (ej: cada 8 Horas, cada 1 Día).
+  4. Duración — Selecciona la fecha de inicio y la fecha de fin.
+  5. Hora primera toma — Define a qué hora inicia el tratamiento.
+  6. Generar calendario — Toca GENERAR CALENDARIO para ver las tomas calculadas.
+     - "Todo el Tratamiento": genera alarmas para todo el período.
+     - "Solo una parte": muestra vista previa de las primeras 3 tomas.
+     - Puedes eliminar tomas individuales tocando la X roja.
+  7. Guardar — Toca CONFIRMAR Y GUARDAR para crear todas las alarmas.
+
+Al final de la pantalla se lista los medicamentos ya asignados al paciente.
+
+PANTALLA PERFIL
+────────────────
+Gestión de tu cuenta.
+
+  Tarjeta de perfil:
+    Muestra tu nombre y correo. Toca la foto para cambiarla desde la galería.
+
+  Editar Perfil:
+    Modifica nombre, apellido, correo (obligatorio) y teléfono.
+
+  Cerrar Sesión:
+    Pide confirmación antes de salir.
+
+  Mis Pacientes:
+    Lista de pacientes vinculados. Para agregar uno, toca Agregar e ingresa el código de vinculación del paciente (visible en su pantalla de inicio). Toca Vincular Paciente.
+
+  Reportes:
+    Envía un reporte al equipo de soporte. Selecciona una categoría (General, Técnico, Paciente u Otro), escribe un título y una descripción, y toca Enviar Reporte.
+
+  Información legal:
+    Accede a los Términos y condiciones y a la Política de tratamiento de datos.
+
+© 2026 TUSALUD+ — Manual de Usuario.`;

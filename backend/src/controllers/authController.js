@@ -66,46 +66,57 @@ export const getAllUsers = (req, res) => {
     });
 };
 
+// Genera un código alfanumérico único de 6 caracteres
+function generateLinkCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+        code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+}
+
 // REGISTRO DE USUARIO
 export const register = async (req, res) => {
-    const { first_name, last_name, email, password, roleType } = req.body;
+    const { first_name, last_name, username, email, password, phone, birth_date, roleType } = req.body;
 
-    // Validación básica de campos requeridos
-    if (!first_name || !email || !password) {
-        return res.status(400).json({ message: "Faltan campos obligatorios" });
+    if (!first_name || !last_name || !username || !email || !password || !phone || !birth_date) {
+        return res.status(400).json({ success: false, message: "Faltan campos obligatorios" });
     }
 
     try {
-        // Encriptamos la contraseña
         const hashedPassword = await bcrypt.hash(password, 10);
-        
-        // Asignamos el ID según lo definido: Paciente (2) o Cuidador (3)
-        const roles_id = (roleType === 'cuidador') ? 3 : 2;
+        const roles_id = roleType === 'cuidador' ? 3 : 2;
+        const link_code = roleType === 'paciente' ? generateLinkCode() : null;
 
-        User.create({ 
-            first_name, 
-            last_name, 
-            email, 
+        User.create({
+            first_name,
+            last_name,
+            username,
+            email,
             password: hashedPassword,
-            roles_id 
+            phone,
+            birth_date,
+            roles_id,
+            link_code
         }, (err, result) => {
             if (err) {
                 if (err.code === 'ER_DUP_ENTRY') {
-                    return res.status(400).json({ message: "El correo o usuario ya existe" });
+                    return res.status(400).json({ success: false, message: "El correo o nombre de usuario ya está registrado" });
                 }
-                console.error("Error al crear:", err);
-                return res.status(500).json({ message: "Error al registrar en la base de datos" });
+                console.error("Error al crear usuario:", err);
+                return res.status(500).json({ success: false, message: "Error al registrar en la base de datos" });
             }
-            
-            res.status(201).json({ 
+            res.status(201).json({
                 success: true,
-                message: `Usuario ${roleType || 'paciente'} registrado con éxito`,
-                userId: result.insertId 
+                message: `${roleType === 'cuidador' ? 'Cuidador' : 'Paciente'} registrado con éxito`,
+                userId: result.insertId,
+                ...(link_code && { link_code })
             });
         });
     } catch (error) {
-        console.error("Error en el catch:", error);
-        res.status(500).json({ message: "Error en el servidor", details: error.message });
+        console.error("Error en registro:", error);
+        res.status(500).json({ success: false, message: "Error en el servidor", details: error.message });
     }
 };
 

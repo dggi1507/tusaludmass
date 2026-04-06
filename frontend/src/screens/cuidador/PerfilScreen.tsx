@@ -14,8 +14,9 @@ import {
   getUserById,
   updateUserProfile,
   linkPatientToCaregiver,
+  createReporte,
 } from '../../services/dataService';
-import { TERMINOS_TEXTO, POLITICA_TEXTO } from '../../constants/legalContent';
+import { TERMINOS_TEXTO, POLITICA_TEXTO, MANUAL_TEXTO } from '../../constants/legalContent';
 
 // ─── Visor de documentos legales ─────────────────────────────────────────────
 
@@ -77,9 +78,17 @@ const PerfilScreen: React.FC<Props> = ({ caregiverId }) => {
   const [linkCode, setLinkCode] = useState('');
   const [linking, setLinking] = useState(false);
 
+  // Modal reporte
+  const [reporteVisible, setReporteVisible] = useState(false);
+  const [reporteTitulo, setReporteTitulo] = useState('');
+  const [reporteDescripcion, setReporteDescripcion] = useState('');
+  const [reporteCategoria, setReporteCategoria] = useState('general');
+  const [enviandoReporte, setEnviandoReporte] = useState(false);
+
   // Modales legales
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
 
   const caregiverName = useMemo(() => {
     if (!caregiver) return 'Cuidador';
@@ -191,6 +200,32 @@ const PerfilScreen: React.FC<Props> = ({ caregiverId }) => {
     }
   };
 
+  // ── Enviar reporte ────────────────────────────────────────────────────────
+  const handleEnviarReporte = async () => {
+    if (!caregiverId) return;
+    if (!reporteTitulo.trim() || !reporteDescripcion.trim()) {
+      return Alert.alert('Campos requeridos', 'El título y la descripción son obligatorios.');
+    }
+    setEnviandoReporte(true);
+    try {
+      await createReporte({
+        caregiver_id: caregiverId,
+        titulo: reporteTitulo.trim(),
+        descripcion: reporteDescripcion.trim(),
+        categoria: reporteCategoria,
+      });
+      setReporteVisible(false);
+      setReporteTitulo('');
+      setReporteDescripcion('');
+      setReporteCategoria('general');
+      Alert.alert('Reporte enviado', 'Tu reporte fue enviado correctamente. El equipo lo revisará pronto.');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'No se pudo enviar el reporte.');
+    } finally {
+      setEnviandoReporte(false);
+    }
+  };
+
   // ── Cerrar sesión ─────────────────────────────────────────────────────────
   const handleLogout = () => {
     Alert.alert(
@@ -298,8 +333,34 @@ const PerfilScreen: React.FC<Props> = ({ caregiverId }) => {
             })
           )}
 
+          {/* ── Reportes ──────────────────────────────────────────────── */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Reportes</Text>
+            <TouchableOpacity style={styles.addBtn} onPress={() => setReporteVisible(true)}>
+              <Ionicons name="flag-outline" size={16} color="#FFF" />
+              <Text style={styles.addBtnText}>Nuevo</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.reporteRow} onPress={() => setReporteVisible(true)}>
+            <View style={styles.reporteIcon}>
+              <Ionicons name="warning-outline" size={20} color="#E67E22" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.reporteRowTitle}>Reportar un inconveniente</Text>
+              <Text style={styles.reporteRowSub}>Informa al equipo sobre problemas técnicos, de paciente u otros</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#CCC" />
+          </TouchableOpacity>
+
           {/* ── Información legal ─────────────────────────────────────── */}
           <Text style={styles.sectionTitle}>Información legal</Text>
+
+          <TouchableOpacity style={styles.legalRow} onPress={() => setShowManualModal(true)}>
+            <Ionicons name="book-outline" size={18} color="#004080" style={styles.infoIcon} />
+            <Text style={styles.legalRowText}>Manual de usuario</Text>
+            <Ionicons name="chevron-forward" size={16} color="#CCC" />
+          </TouchableOpacity>
 
           <TouchableOpacity style={styles.legalRow} onPress={() => setShowTermsModal(true)}>
             <Ionicons name="document-text-outline" size={18} color="#004080" style={styles.infoIcon} />
@@ -317,6 +378,12 @@ const PerfilScreen: React.FC<Props> = ({ caregiverId }) => {
       )}
 
       {/* ── Modales de documentos legales ─────────────────────────────── */}
+      <LegalDocModal
+        visible={showManualModal}
+        title="Manual de Usuario"
+        content={MANUAL_TEXTO}
+        onClose={() => setShowManualModal(false)}
+      />
       <LegalDocModal
         visible={showTermsModal}
         title="Términos y Condiciones de Uso"
@@ -357,6 +424,63 @@ const PerfilScreen: React.FC<Props> = ({ caregiverId }) => {
             {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Guardar cambios</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditVisible(false)}>
+            <Text style={styles.cancelBtnText}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* ── Modal reporte ─────────────────────────────────────────────── */}
+      <Modal visible={reporteVisible} transparent animationType="slide" onRequestClose={() => setReporteVisible(false)}>
+        <TouchableOpacity style={styles.modalBackdrop} onPress={() => setReporteVisible(false)} activeOpacity={1} />
+        <View style={styles.bottomSheet}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>Reportar Inconveniente</Text>
+          <Text style={styles.sheetSubtitle}>
+            Describe el problema que has experimentado para que el equipo pueda ayudarte.
+          </Text>
+
+          <Text style={styles.fieldLabel}>Categoría</Text>
+          <View style={styles.categoriaRow}>
+            {(['general', 'tecnico', 'paciente', 'otro'] as const).map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.categoriaPill, reporteCategoria === cat && styles.categoriaPillActive]}
+                onPress={() => setReporteCategoria(cat)}
+              >
+                <Text style={[styles.categoriaPillText, reporteCategoria === cat && styles.categoriaPillTextActive]}>
+                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.fieldLabel}>Título *</Text>
+          <TextInput
+            style={styles.input}
+            value={reporteTitulo}
+            onChangeText={setReporteTitulo}
+            placeholder="Ej: Error al cargar medicamentos"
+            autoCapitalize="sentences"
+          />
+
+          <Text style={styles.fieldLabel}>Descripción *</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={reporteDescripcion}
+            onChangeText={setReporteDescripcion}
+            placeholder="Describe el inconveniente con el mayor detalle posible..."
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            autoCapitalize="sentences"
+          />
+
+          <TouchableOpacity style={styles.saveBtn} onPress={handleEnviarReporte} disabled={enviandoReporte}>
+            {enviandoReporte
+              ? <ActivityIndicator color="#FFF" />
+              : <Text style={styles.saveBtnText}>Enviar Reporte</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => { setReporteVisible(false); setReporteTitulo(''); setReporteDescripcion(''); setReporteCategoria('general'); }}>
             <Text style={styles.cancelBtnText}>Cancelar</Text>
           </TouchableOpacity>
         </View>
@@ -506,4 +630,28 @@ const styles = StyleSheet.create({
   saveBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
   cancelBtn: { padding: 14, alignItems: 'center', marginTop: 4 },
   cancelBtnText: { color: '#666', fontSize: 14 },
+
+  // Reportes
+  reporteRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#FFF8F0', borderRadius: 12, padding: 14, marginBottom: 20,
+    borderWidth: 1, borderColor: '#F0E0C8',
+  },
+  reporteIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#FEF0E0', justifyContent: 'center', alignItems: 'center', marginRight: 12,
+  },
+  reporteRowTitle: { fontWeight: 'bold', fontSize: 14, color: '#333' },
+  reporteRowSub: { fontSize: 12, color: '#888', marginTop: 2 },
+
+  // Modal reporte - categoría
+  categoriaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  categoriaPill: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16,
+    backgroundColor: '#F0F0F0', borderWidth: 1, borderColor: '#DDD',
+  },
+  categoriaPillActive: { backgroundColor: '#004080', borderColor: '#004080' },
+  categoriaPillText: { fontSize: 13, color: '#555', fontWeight: '500' },
+  categoriaPillTextActive: { color: '#FFF' },
+  textArea: { height: 100, paddingTop: 12 },
 });
