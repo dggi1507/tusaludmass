@@ -22,7 +22,16 @@ export default function ForgotPasswordScreen() {
       Alert.alert(
         "Correo Enviado", 
         "Si el correo existe en nuestro sistema, recibirás instrucciones para restablecer tu contraseña.",
-        [{ text: "OK", onPress: () => router.back() }]
+        [{ 
+          text: "OK", 
+          onPress: () => {
+            // CAMBIO AQUÍ: Navegamos a la pantalla de reset y pasamos el email
+            router.push({
+              pathname: '/auth/reset-password',
+              params: { email: email }
+            });
+          } 
+        }]
       );
     } else {
       Alert.alert("Error", result.message || "No se pudo procesar la solicitud.");
@@ -32,6 +41,7 @@ export default function ForgotPasswordScreen() {
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        {/* Usamos el mismo color #004080 de tu estilo */}
         <Text style={{ fontSize: 24, color: '#004080' }}>←</Text>
       </TouchableOpacity>
 
