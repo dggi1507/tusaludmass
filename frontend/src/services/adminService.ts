@@ -23,9 +23,30 @@ export interface MedicineData {
 
 export interface ReportsData {
     id: number;
-    userName: string;
-    reason: string;
-    date: string;
+    caregiver_id: number;
+    titulo: string;
+    descripcion: string;
+    categoria: string;
+    estado: number; // 0=pendiente, 1=revisado, 2=resuelto
+    created_at: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    username?: string;
+    email?: string;
+}
+export interface ClinicData {
+    id: number;
+    name: string;
+    address?: string;
+}
+
+export interface DoctorData {
+    id: number;
+    first_name?: string;
+    last_name?: string;
+    email: string;
+    clinica?: string;
+    state: number;
 }
 
 export interface AdminResponse {
@@ -33,6 +54,14 @@ export interface AdminResponse {
     message?: string;
     users?: UserData[];
 }
+
+export interface AdminSummaryData {
+    activeUsers: number;
+    appointments: number;
+    reminders: number;
+    alarms: number;
+}
+
 
 // 1. Obtener todos los usuarios
 export const getAllUsersProvider = async (): Promise<AdminResponse> => {
@@ -109,20 +138,113 @@ export const toggleUserStatusProvider = async (userId: number, newState: number)
     }
 };
 
-// 4. Medicinas
+// --- FUNCIONES DE MEDICAMENTOS ---
+// 4. Obtener Catálogo (Usa /api/catalog)
 export const getAllMedicinesProvider = async (): Promise<{success: boolean, medicines?: MedicineData[], message?: string}> => {
     try {
-        const response = await fetch(`${API_URL}/medicines`, {
+        const response = await fetch(`${API_URL}/catalog`, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Accept': 'application/json' },
         });
-        return await response.json();
+
+        if (!response.ok) return { success: false, message: "No se pudo obtener el catálogo" };
+
+        const data = await response.json();
+
+        // Manejo flexible de la respuesta (array o objeto con propiedad medicines)
+        if (data && data.medicines) {
+            return { success: true, medicines: data.medicines };
+        }
+        
+        if (Array.isArray(data)) {
+            return { success: true, medicines: data };
+        }
+
+        return { success: false, message: "Formato no reconocido" };
     } catch (error) {
-        return { success: false, message: "Error de conexión con el inventario." };
+        console.error("Error en getAllMedicinesProvider:", error);
+        return { success: false, message: "Error de red" };
     }
 };
 
 // 5. Reportes
 export const getAllReportsProvider = async (): Promise<{success: boolean, reports?: ReportsData[], message?: string}> => {
-    return { success: true, reports: []};
+    try {
+        const response = await fetch(`${API_URL}/reportes`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        return await response.json();
+    } catch (error) {
+        console.error("Error en getAllReportsProvider:", error);
+        return { success: false, message: "Error de conexión con el servidor." };
+    }
+};
+
+export const updateReporteEstadoProvider = async (reporteId: number, estado: number): Promise<{success: boolean, message?: string}> => {
+    try {
+        const response = await fetch(`${API_URL}/reportes/${reporteId}/estado`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estado }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error("Error en updateReporteEstadoProvider:", error);
+        return { success: false, message: "Error de conexión." };
+    }
+};
+//5. clinicas y medicos
+export const getClinicsAndDoctorsProvider = async (): Promise<{
+    success: boolean;
+    clinics?: ClinicData[];
+    doctors?: DoctorData[];
+    message?: string;
+}> => {
+    try {
+        const response = await fetch(`${API_URL}/external/catalog`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+        });
+
+        if (!response.ok) {
+            return { success: false, message: 'No se pudo obtener el listado de clínicas y médicos' };
+        }
+
+        const data = await response.json();
+        return {
+            success: Boolean(data?.success),
+            clinics: data?.clinics || [],
+            doctors: data?.doctors || [],
+            message: data?.message,
+        };
+    } catch (error) {
+        console.error('Error en getClinicsAndDoctorsProvider:', error);
+        return { success: false, message: 'Error de conexión' };
+    }
+};
+
+export const getAdminSummaryProvider = async (
+    filter: 'Mensual' | 'Semanal' | 'Hoy'
+): Promise<{ success: boolean; summary?: AdminSummaryData; message?: string }> => {
+    try {
+        const response = await fetch(`${API_URL}/admin/summary?filter=${encodeURIComponent(filter)}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+        });
+
+        if (!response.ok) {
+            return { success: false, message: 'No se pudo obtener el resumen del administrador' };
+        }
+
+        const data = await response.json();
+        if (data?.success && data?.summary) {
+            return { success: true, summary: data.summary };
+        }
+
+        return { success: false, message: data?.message || 'Respuesta inválida del servidor' };
+    } catch (error) {
+        console.error('Error en getAdminSummaryProvider:', error);
+        return { success: false, message: 'Error de conexión' };
+    }
 };

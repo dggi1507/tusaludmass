@@ -63,11 +63,24 @@ export async function eliminarAlarma(alarmId: number) {
   return apiDelete<{ success: boolean }>(`/alarms/${alarmId}`);
 }
 
+export async function getClinics() {
+  return apiGet<{ success: boolean; clinics: { id: number; name: string; address: string }[] }>('/external/clinics');
+}
+
 export async function linkPatientToCaregiver(caregiverId: number, link_code: string) {
   return apiPost<{ success: boolean; message?: string; patientId?: number }>(
     `/caregivers/${caregiverId}/link-patient`,
     { link_code }
   );
+}
+
+export async function createReporte(payload: {
+  caregiver_id: number;
+  titulo: string;
+  descripcion: string;
+  categoria?: string;
+}) {
+  return apiPost<{ success: boolean; id: number }>('/reportes', payload);
 }
 
 export async function updateUserProfile(

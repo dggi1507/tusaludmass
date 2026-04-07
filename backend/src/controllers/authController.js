@@ -1,10 +1,10 @@
 import User from '../models/user.js';
 import bcrypt from 'bcrypt'; 
-import sgMail from '@sendgrid/mail'; //
+import sgMail from '@sendgrid/mail';
 import crypto from 'crypto';
 
-// Configuramos SendGrid con la API Key que pusiste en Render
-sgMail.setApiKey(process.env.SENDGRID_API_KEY); //
+// Configuramos SendGrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // LOGIN ESTÁNDAR
 export const login = (req, res) => {
@@ -61,52 +61,54 @@ export const getAllUsers = (req, res) => {
                 message: 'Error al obtener la lista de usuarios' 
             });
         }
-
         const safeUsers = results.map(({ password, ...user }) => user);
-        
-        res.json({ 
-            success: true, 
-            users: safeUsers 
-        });
+        res.json({ success: true, users: safeUsers });
     });
 };
 
+// Generador de códigos
+function generateLinkCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+        code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+}
+
 // REGISTRO DE USUARIO
 export const register = async (req, res) => {
-    const { first_name, last_name, email, password, roleType } = req.body;
+    const { first_name, last_name, username, email, password, phone, birth_date, roleType } = req.body;
 
-    if (!first_name || !email || !password) {
-        return res.status(400).json({ message: "Faltan campos obligatorios" });
+    if (!first_name || !last_name || !username || !email || !password || !phone || !birth_date) {
+        return res.status(400).json({ success: false, message: "Faltan campos obligatorios" });
     }
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         const roles_id = (roleType === 'cuidador') ? 3 : 2;
+        const link_code = roleType === 'paciente' ? generateLinkCode() : null;
 
-        User.create({ 
-            first_name, 
-            last_name, 
-            email, 
-            password: hashedPassword,
-            roles_id 
+        User.create({
+            first_name, last_name, username, email,
+            password: hashedPassword, phone, birth_date,
+            roles_id, link_code
         }, (err, result) => {
             if (err) {
                 if (err.code === 'ER_DUP_ENTRY') {
-                    return res.status(400).json({ message: "El correo o usuario ya existe" });
+                    return res.status(400).json({ success: false, message: "El correo o usuario ya existe" });
                 }
-                console.error("Error al crear:", err);
-                return res.status(500).json({ message: "Error al registrar en la base de datos" });
+                return res.status(500).json({ success: false, message: "Error en DB" });
             }
-            
-            res.status(201).json({ 
+            res.status(201).json({
                 success: true,
-                message: `Usuario ${roleType || 'paciente'} registrado con éxito`,
-                userId: result.insertId 
+                message: 'Registrado con éxito',
+                userId: result.insertId,
+                ...(link_code && { link_code })
             });
         });
     } catch (error) {
-        console.error("Error en el catch:", error);
-        res.status(500).json({ message: "Error en el servidor", details: error.message });
+        res.status(500).json({ success: false, message: "Error en el servidor" });
     }
 };
 
@@ -116,97 +118,68 @@ export const updateUser = (req, res) => {
     const userData = req.body;
 
     User.update(id, userData, (err, result) => {
-        if (err) {
-            console.error('Error al actualizar:', err);
-            return res.status(500).json({ success: false, message: 'Error al actualizar datos' });
-        }
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
-        }
-
-        res.json({ success: true, message: 'Datos actualizados correctamente' });
+        if (err) return res.status(500).json({ success: false, message: 'Error al actualizar' });
+        if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'No encontrado' });
+        res.json({ success: true, message: 'Actualizado correctamente' });
     });
 };
 
-// RECUPERAR CONTRASEÑA (ENVÍO CON SENDGRID)
+// RECUPERAR CONTRASEÑA
 export const forgotPassword = (req, res) => {
     const { email } = req.body;
 
     User.findByEmail(email, async (err, user) => {
-        if (err) return res.status(500).json({ success: false, message: 'Error de servidor' });
-        if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+        if (err || !user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
 
-        // Generamos un código de 6 números
         const token = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresDate = new Date(Date.now() + 3600000); // 1 hora
-        const expires = expiresDate.toISOString().slice(0, 19).replace('T', ' '); 
+        const expires = new Date(Date.now() + 3600000).toISOString().slice(0, 19).replace('T', ' '); 
 
         User.saveResetToken(user.id, token, expires, async (err) => {
-            if (err) {
-                console.error("Error al guardar token:", err);
-                return res.status(500).json({ success: false, message: 'Error al procesar la solicitud' });
-            }
+            if (err) return res.status(500).json({ success: false });
 
-            // Configuramos el mensaje para SendGrid
             const msg = {
-                to: user.email, //
-                from: 'tusaludmas8@gmail.com', // El correo que verificaste en SendGrid
-                subject: 'Código de Recuperación - Tu Salud +',
-                html: `
-                    <div style="font-family: sans-serif; max-width: 450px; border: 1px solid #eee; padding: 25px; border-radius: 8px;">
-                        <h2 style="color: #2c3e50; text-align: center;">Recuperación de Cuenta</h2>
-                        <p>Hola, <strong>${user.first_name || 'Usuario'}</strong>.</p>
-                        <p>Has solicitado restablecer tu contraseña. Usa el siguiente código para completar el proceso:</p>
-                        <div style="background: #f9f9f9; padding: 15px; text-align: center; font-size: 1.8em; font-weight: bold; color: #4A90E2; border: 2px dashed #4A90E2; margin: 20px 0; letter-spacing: 5px;">
-                            ${token}
-                        </div>
-                        <p style="font-size: 0.85em; color: #7f8c8d;">Este código es válido por 1 hora.</p>
-                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                        <p style="text-align: center; color: #bdc3c7; font-size: 0.8em;">&copy; 2026 Tu Salud + | Medellín, Colombia</p>
-                    </div>
-                `,
+                to: user.email,
+                from: 'tusaludmas8@gmail.com',
+                subject: 'Recuperación - Tu Salud +',
+                html: `<h2>Código: ${token}</h2>`
             };
 
             try {
-                await sgMail.send(msg); //
-                console.log("Correo enviado exitosamente con SendGrid"); //
-                res.status(200).json({ success: true, message: 'Correo enviado con éxito' });
-            } catch (sendError) {
-                console.error("Error de SendGrid:", sendError.response?.body || sendError); //
-                res.status(500).json({ success: false, message: 'Error al enviar el correo' });
+                await sgMail.send(msg);
+                res.status(200).json({ success: true, message: 'Correo enviado' });
+            } catch (error) {
+                res.status(500).json({ success: false });
             }
         });
     });
 };
 
-// RESTABLECER CONTRASEÑA FINAL
+// RESTABLECER CONTRASEÑA
 export const resetPassword = async (req, res) => {
     const { token, newPassword } = req.body;
 
-    if (!token || !newPassword) {
-        return res.status(400).json({ success: false, message: 'Token y nueva contraseña requeridos' });
-    }
-
     User.findByResetToken(token, async (err, user) => {
-        if (err || !user) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'El código es inválido o ya expiró. Pide uno nuevo.' 
-            });
-        }
+        if (err || !user) return res.status(400).json({ success: false, message: 'Token inválido' });
 
         try {
             const hashedPassword = await bcrypt.hash(newPassword, 10);
-
             User.updatePassword(user.id, hashedPassword, (err) => {
-                if (err) {
-                    return res.status(500).json({ success: false, message: 'Error al actualizar la contraseña' });
-                }
-                res.json({ success: true, message: '¡Contraseña actualizada con éxito!' });
+                if (err) return res.status(500).json({ success: false });
+                res.json({ success: true, message: 'Contraseña actualizada' });
             });
         } catch (error) {
-            res.status(500).json({ success: false, message: 'Error en el servidor al encriptar' });
+            res.status(500).json({ success: false });
         }
+    });
+};
+
+// ACTUALIZAR ESTADO
+export const updateUserState = (req, res) => {
+    const { id } = req.params;
+    const { state } = req.body;
+
+    User.updateState(id, state, (err, result) => {
+        if (err) return res.status(500).json({ success: false });
+        res.json({ success: true, message: 'Estado actualizado' });
     });
 };

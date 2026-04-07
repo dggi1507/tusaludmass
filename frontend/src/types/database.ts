@@ -97,6 +97,21 @@ export interface PatientLinked {
   username?: string;
 }
 
+export interface Reporte {
+  id: number;
+  caregiver_id: number;
+  titulo: string;
+  descripcion: string;
+  categoria: string; // 'general' | 'tecnico' | 'paciente' | 'otro'
+  estado: number; // 0=pendiente, 1=revisado, 2=resuelto
+  created_at: string;
+  // Campos del JOIN con users
+  first_name?: string | null;
+  last_name?: string | null;
+  username?: string;
+  email?: string;
+}
+
 export interface NotificacionEmergente {
   id: number;
   type: 'toma' | 'cita';

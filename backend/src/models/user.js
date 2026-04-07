@@ -4,16 +4,14 @@ import bcrypt from 'bcrypt';
 const User = {
     // Método para registrar cualquier tipo de usuario (Paciente o Cuidador)
     create: (userData, callback) => {
-        const { first_name, last_name, email, password, roles_id } = userData;
-        
-        const username = email.split('@')[0];
+        const { first_name, last_name, username, email, password, phone, birth_date, roles_id, link_code } = userData;
 
         const sql = `
-            INSERT INTO users 
-            (username, first_name, last_name, password, email, state, roles_id) 
-            VALUES (?, ?, ?, ?, ?, 1, ?)`;
+            INSERT INTO users
+            (username, first_name, last_name, password, email, phone, birth_date, state, roles_id, link_code)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`;
 
-        db.query(sql, [username, first_name, last_name, password, email, roles_id], callback);
+        db.query(sql, [username, first_name, last_name, password, email, phone || null, birth_date || null, roles_id, link_code || null], callback);
     },
 
     authenticate: (username, password, callback) => {
@@ -83,12 +81,10 @@ const User = {
     // ACTUALIZAR DATOS DEL USUARIO
     update: (userId, userData, callback) => {
         const { first_name, last_name, email, phone } = userData;
-        
-        const username = email ? email.split('@')[0] : null;
 
         const sql = `
-            UPDATE users 
-            SET first_name = ?, last_name = ?, email = ?, username = ?, phone = ?
+            UPDATE users
+            SET first_name = ?, last_name = ?, email = ?, phone = ?
             WHERE id = ?`;
 
         db.query(sql, [first_name, last_name, email, username, phone, userId], callback);
@@ -127,6 +123,16 @@ const User = {
             if (err) return callback(err, null);
             callback(null, results[0]);
         });
+        db.query(sql, [first_name, last_name, email, phone, userId], callback);
+    },
+    // CAMBIAR ESTADO DEL USUARIO (1 activo, 0 suspendido)
+    updateState: (userId, state, callback) => {
+        const sql = `
+            UPDATE users
+            SET state = ?
+            WHERE id = ?`;
+
+        db.query(sql, [state, userId], callback);
     }
 };
 

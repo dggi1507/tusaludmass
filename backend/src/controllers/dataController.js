@@ -3,6 +3,26 @@ import Caregiver from '../models/caregiver.js';
 import Medicines from '../models/medicines.js';
 import Appointments from '../models/appointments.js';
 import Alarmas from '../models/alarmas.js';
+import db from '../config/db.js';
+
+const queryAsync = (sql, params = []) =>
+  new Promise((resolve, reject) => {
+    db.query(sql, params, (err, results) => {
+      if (err) return reject(err);
+      resolve(results);
+    });
+  });
+
+const getRangeCondition = (column, filter) => {
+  if (filter === 'Hoy') {
+    return { condition: `DATE(${column}) = CURDATE()`, params: [] };
+  }
+  if (filter === 'Semanal') {
+    return { condition: `YEARWEEK(${column}, 1) = YEARWEEK(CURDATE(), 1)`, params: [] };
+  }
+  // Mensual por defecto
+  return { condition: `YEAR(${column}) = YEAR(CURDATE()) AND MONTH(${column}) = MONTH(CURDATE())`, params: [] };
+};
 
 export const getUserById = (req, res) => {
   const { id } = req.params;
@@ -198,5 +218,44 @@ export const listPatientAlarmas = (req, res) => {
     }
     return res.json({ success: true, alarmas: results || [] });
   });
+};
+
+export const getAdminSummary = async (req, res) => {
+  const filter = req.query.filter || 'Semanal';
+  const normalizedFilter = ['Hoy', 'Semanal', 'Mensual'].includes(filter) ? filter : 'Semanal';
+
+  try {
+    const [activeUsersRows] = await Promise.all([
+      queryAsync('SELECT COUNT(*) as total FROM users WHERE state = 1'),
+    ]);
+
+    const appointmentsRange = getRangeCondition('appointment_datetime', normalizedFilter);
+    const remindersRange = getRangeCondition('alarm_datetime', normalizedFilter);
+
+    const [appointmentsRows, remindersRows, pendingAlarmsRows] = await Promise.all([
+      queryAsync(
+        `SELECT COUNT(*) as total FROM appointments WHERE ${appointmentsRange.condition}`,
+        appointmentsRange.params
+      ),
+      queryAsync(
+        `SELECT COUNT(*) as total FROM alarmas WHERE ${remindersRange.condition}`,
+        remindersRange.params
+      ),
+      queryAsync('SELECT COUNT(*) as total FROM alarmas WHERE state = 0'),
+    ]);
+
+    return res.json({
+      success: true,
+      summary: {
+        activeUsers: Number(activeUsersRows?.[0]?.total || 0),
+        appointments: Number(appointmentsRows?.[0]?.total || 0),
+        reminders: Number(remindersRows?.[0]?.total || 0),
+        alarms: Number(pendingAlarmsRows?.[0]?.total || 0),
+      },
+    });
+  } catch (err) {
+    console.error('Error DB getAdminSummary:', err);
+    return res.status(500).json({ success: false, message: 'Error al obtener resumen del administrador' });
+  }
 };
 

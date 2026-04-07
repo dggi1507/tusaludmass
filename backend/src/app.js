@@ -6,7 +6,8 @@ import patientRoutes from './routes/patientRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
 import alarmRoutes from './routes/alarmRoutes.js';
 import medicineRoutes from './routes/medicineRoutes.js';
-
+import externalRoutes from './routes/externalRoutes.js';
+import reporteRoutes from './routes/reporteRoutes.js';
 const app = express();
 
 // Middlewares
@@ -29,11 +30,11 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/alarms', alarmRoutes);
 
-app.use('/api/auth', authRoutes);
-
-// Ruta de prueba para verificar que el servidor en Render está vivo
 app.use('/api/medicines', medicineRoutes);
+app.use('/api/catalog', medicineRoutes);
 
+app.use('/api/external', externalRoutes);
+app.use('/api/reportes', reporteRoutes);
 // Ruta de prueba
 app.get('/api/saludo', (req, res) => {
   res.json({ mensaje: "Conexión exitosa desde el Backend de Node.js en Render" });

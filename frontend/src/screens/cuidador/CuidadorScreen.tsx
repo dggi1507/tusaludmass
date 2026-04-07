@@ -18,7 +18,7 @@ import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'; 
 import * as Location from 'expo-location'; 
 import { API_BASE_URL } from '../../config/api';
-import { listPatientAlarmas, omitirAlarma, editarAlarma, eliminarAlarma } from '../../services/dataService';
+import { listPatientAlarmas, omitirAlarma } from '../../services/dataService';
 import type { CuidadorUser, PatientLinked, NotificacionEmergente } from '../../types/database';
 
 // --- FUNCIONES DE APOYO ---
@@ -87,8 +87,6 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(todayString());
   const [menuNotif, setMenuNotif] = useState<NotificacionEmergente | null>(null);
-  const [alarmEditando, setAlarmEditando] = useState<NotificacionEmergente | null>(null);
-  const [showEditPicker, setShowEditPicker] = useState(false);
 
   const weekDays = generateWeekDays(weekOffset);
   const alarmasDia = todasLasAlarmas.filter(n => alarmToLocalDateString(n.alarm_datetime) === selectedDate);
@@ -118,15 +116,19 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
       setLoadingAlarmas(true);
       const res = await listPatientAlarmas(pId);
       if (res.success && Array.isArray(res.alarmas)) {
-        setTodasLasAlarmas(res.alarmas.filter((a: any) => a.alarm_datetime).map((a: any) => ({
-          id: a.id,
-          type: 'toma',
-          title: a.title,
-          detail: 'Medicamento programado',
-          alarm_datetime: a.alarm_datetime,
-          patient_medicine_id: a.patient_medicine_id,
-          state: a.state ?? 1,
-        })));
+        setTodasLasAlarmas(
+          res.alarmas
+            .filter((a: any) => a.alarm_datetime && a.state !== 2) // Filtramos los eliminados
+            .map((a: any) => ({
+              id: a.id,
+              type: 'toma' as const,
+              title: a.title,
+              detail: 'Medicamento programado',
+              alarm_datetime: a.alarm_datetime,
+              patient_medicine_id: a.patient_medicine_id,
+              state: a.state ?? 0,
+            }))
+        );
       }
     } catch (e) {
       console.error('Error al cargar alarmas:', e);
@@ -193,14 +195,22 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
 
         <View style={styles.summaryCard}>
           <View style={styles.calendarNavRow}>
-            <TouchableOpacity onPress={() => setWeekOffset(w => w - 1)}><Ionicons name="chevron-back" size={22} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => setWeekOffset(w => w - 1)}>
+              <Ionicons name="chevron-back" size={22} />
+            </TouchableOpacity>
             <Text style={styles.monthTitle}>{weekMonthLabel}</Text>
-            <TouchableOpacity onPress={() => setWeekOffset(w => w + 1)}><Ionicons name="chevron-forward" size={22} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => setWeekOffset(w => w + 1)}>
+              <Ionicons name="chevron-forward" size={22} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.calendarStrip}>
             {weekDays.map((d) => (
-              <TouchableOpacity key={d.fullDate} style={[styles.calendarDay, d.fullDate === selectedDate && styles.calendarDaySelected]} onPress={() => setSelectedDate(d.fullDate)}>
+              <TouchableOpacity 
+                key={d.fullDate} 
+                style={[styles.calendarDay, d.fullDate === selectedDate && styles.calendarDaySelected]} 
+                onPress={() => setSelectedDate(d.fullDate)}
+              >
                 <Text style={[styles.calendarDayNum, d.fullDate === selectedDate && styles.calendarDayTextActive]}>{d.num}</Text>
                 <Text style={[styles.calendarDayLabel, d.fullDate === selectedDate && styles.calendarDayTextActive]}>{d.label}</Text>
                 {d.isToday && d.fullDate !== selectedDate && <View style={styles.todayDot} />}
@@ -217,13 +227,22 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
           ) : alarmasDia.length > 0 ? (
             alarmasDia.map((notif) => (
               <View key={notif.id} style={styles.timelineItem}>
-                <View style={[styles.pillIcon, { backgroundColor: '#004080' }]}><FontAwesome5 name="pills" size={14} color="#FFF" /></View>
-                <View style={styles.activityInfo}>
+                <View style={[styles.pillIcon, { backgroundColor: notif.state === 1 ? '#4CAF50' : '#004080' }]}>
+                  <FontAwesome5 name="pills" size={14} color="#FFF" />
+                </View>
+                <View style={[styles.activityInfo, notif.state === 1 && styles.activityInfoTomada]}>
                   <View style={styles.activityRow}>
                     <Text style={styles.activityTitle} numberOfLines={1}>{notif.title}</Text>
-                    <TouchableOpacity onPress={() => setMenuNotif(notif)}><Ionicons name="ellipsis-vertical" size={18} color="#666" /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => setMenuNotif(notif)}>
+                      <Ionicons name="ellipsis-vertical" size={18} color="#666" />
+                    </TouchableOpacity>
                   </View>
-                  <Text style={styles.activityTime}><Ionicons name="time-outline" size={12} /> {formatAlarmTime(notif.alarm_datetime)}</Text>
+                  <Text style={styles.activityTime}>
+                    <Ionicons name="time-outline" size={14} /> {formatAlarmTime(notif.alarm_datetime)}
+                  </Text>
+                  <Text style={styles.activityDetail}>
+                    {notif.state === 1 ? 'Tomada' : 'Medicamento programado'}
+                  </Text>
                 </View>
               </View>
             ))
@@ -264,13 +283,6 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
           <Text style={styles.bottomSheetTitle} numberOfLines={2}>{menuNotif?.title}</Text>
           <Text style={styles.bottomSheetTime}>{menuNotif ? formatAlarmTime(menuNotif.alarm_datetime) : ''}</Text>
 
-          {!isPastAlarm && (
-            <TouchableOpacity style={styles.sheetOption} onPress={() => { setMenuNotif(null); setAlarmEditando(menuNotif); setShowEditPicker(true); }}>
-              <Ionicons name="pencil-outline" size={20} color="#004080" />
-              <Text style={[styles.sheetOptionText, { color: '#004080' }]}>Editar hora</Text>
-            </TouchableOpacity>
-          )}
-
           <TouchableOpacity style={styles.sheetOption} onPress={() => handleOmitir(menuNotif!)}>
             <Ionicons name="close-circle-outline" size={20} color="#FF9800" />
             <Text style={[styles.sheetOptionText, { color: '#FF9800' }]}>Omitir toma</Text>
@@ -286,7 +298,7 @@ export default function CuidadorScreen({ user, patient = null }: CuidadorScreenP
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
-  header: { backgroundColor: '#004080', paddingHorizontal: 20, paddingVertical: 15, alignItems: 'flex-start' },
+  header: { backgroundColor: '#004080', paddingHorizontal: 20, paddingVertical: 15 },
   headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold', letterSpacing: 2 },
   scrollContent: { padding: 20 },
   welcomeSection: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
@@ -306,11 +318,13 @@ const styles = StyleSheet.create({
   todayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#004080', marginTop: 3 },
   subSubtitle: { fontSize: 12, color: '#999', textAlign: 'center', marginBottom: 20 },
   timelineItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
-  pillIcon: { width: 28, height: 28, borderRadius: 14, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
+  pillIcon: { width: 32, height: 32, borderRadius: 16, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
   activityInfo: { flex: 1, backgroundColor: '#FFF', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' },
+  activityInfoTomada: { backgroundColor: '#F1F8F1', borderColor: '#C8E6C9' },
   activityRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   activityTitle: { fontWeight: 'bold', fontSize: 14, flex: 1, marginRight: 8 },
-  activityTime: { fontSize: 12, color: '#004080', marginTop: 4 },
+  activityTime: { fontSize: 12, color: '#004080', marginTop: 4, flexDirection: 'row', alignItems: 'center' },
+  activityDetail: { fontSize: 12, color: '#666', marginTop: 2 },
   emptyText: { textAlign: 'center', color: '#999', fontSize: 12 },
   sectionLabel: { fontSize: 16, fontWeight: 'bold', marginTop: 25, marginBottom: 10 },
   mapContainer: { height: 250, borderRadius: 15, backgroundColor: '#E0E0E0', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },

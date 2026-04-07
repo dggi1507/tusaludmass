@@ -10,6 +10,7 @@ import {
   listPatientAppointments,
   createPatientAppointment,
   listPatientAlarmas,
+  getAdminSummary
 } from '../controllers/dataController.js';
 
 const router = express.Router();
@@ -28,6 +29,7 @@ router.get('/patients/:patientId/appointments', listPatientAppointments);
 router.post('/patients/:patientId/appointments', createPatientAppointment);
 
 router.get('/patients/:patientId/alarmas', listPatientAlarmas);
+router.get('/admin/summary', getAdminSummary);
 
 export default router;
 
