@@ -1,7 +1,8 @@
 // frontend/src/services/authService.ts
 import { API_BASE_URL } from '../config/api';
 
-const API_URL = `${API_BASE_URL}/auth`; // Simplificamos para que todas usen /auth
+// Eliminamos el "/auth" intermedio para que coincida con las rutas de tu Backend
+const API_URL = API_BASE_URL; 
 
 export interface AuthResponse {
     success: boolean;
@@ -18,7 +19,8 @@ export interface AuthResponse {
 
 // LOGIN ESTÁNDAR
 export const loginProvider = async (username: string, password: string): Promise<AuthResponse> => {
-    console.log("Intentando Login en:", `${API_URL}/login`);
+    // Ahora apuntará a .../api/login en lugar de .../api/auth/login
+    console.log("Intentando Login en:", `${API_URL}/login`); 
     try {
         const response = await fetch(`${API_URL}/login`, {
             method: 'POST',
@@ -26,7 +28,9 @@ export const loginProvider = async (username: string, password: string): Promise
             body: JSON.stringify({ username, password }),
         });
 
-        const data = await response.json();
+        // Si el servidor responde con error 404 (HTML), esto fallará con el error del caracter "<"
+        const data = await response.json(); 
+        
         if (!response.ok) {
             console.log("Error en Login:", data.message);
             return { success: false, message: data.message || "Credenciales incorrectas" };
@@ -85,8 +89,46 @@ export const forgotPasswordProvider = async (email: string): Promise<{success: b
         return { success: true, message: data.message };
 
     } catch (error) {
-        // Si entra aquí, el problema es que el celular no llega al servidor
         console.error("Fallo total de conexión (Network Error):", error);
         return { success: false, message: "Error de conexión con el servidor" };
+    }
+};
+
+export const resetPasswordProvider = async (email: string, token: string, newPassword: string) => {
+    const targetUrl = `${API_URL}/reset-password`;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // espera 30 seg
+
+    try {
+        const response = await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ 
+                email: email.trim(), 
+                token: token.trim(),
+                newPassword 
+            }),
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            const data = await response.json();
+            return { success: response.ok, message: data.message || (response.ok ? "Éxito" : "Error") };
+        } else {
+            return { success: false, message: "El servidor tuvo un problema técnico." };
+        }
+
+    } catch (error: any) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            return { success: false, message: "El servidor está iniciando, espera unos segundos e intenta de nuevo." };
+        }
+        return { success: false, message: "No hay conexión con el servidor." };
     }
 };

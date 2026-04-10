@@ -84,14 +84,15 @@ export const getAllUsersProvider = async (): Promise<AdminResponse> => {
 };
 
 /**
- * 2. ACTUALIZAR USUARIO (Corregido con la ruta /update)
+ * 2. ACTUALIZAR USUARIO
+ * Optimizado para manejar errores de HTML y limpiar el body
  */
 export const updateUserProvider = async (userId: number, userData: Partial<UserData>): Promise<{success: boolean, message?: string}> => {
     try {
-        // CORRECCIÓN: Usamos /update/${userId} porque así está en tu authRoutes.js
+        // La URL debe ser: https://tusaludmas.onrender.com/api/update/ID
         const url = `${API_URL}/update/${userId}`;
         
-        console.log("Petición PUT a:", url); 
+        console.log("Enviando PUT a:", url); 
 
         const response = await fetch(url, {
             method: 'PUT',
@@ -99,7 +100,13 @@ export const updateUserProvider = async (userId: number, userData: Partial<UserD
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify(userData),
+            // Enviamos solo los campos que el backend espera para evitar conflictos
+            body: JSON.stringify({
+                first_name: userData.first_name,
+                last_name: userData.last_name,
+                email: userData.email,
+                phone: userData.phone
+            }),
         });
 
         const contentType = response.headers.get("content-type");
@@ -108,17 +115,20 @@ export const updateUserProvider = async (userId: number, userData: Partial<UserD
             const data = await response.json();
             return { 
                 success: response.ok, 
-                message: data.message || (response.ok ? "Usuario actualizado" : "Error al actualizar") 
+                message: data.message || (response.ok ? "¡Datos actualizados con éxito!" : "Error al actualizar") 
             };
         } else {
-            // Manejo de error si el servidor devuelve HTML (Ruta no encontrada)
+            // Si el servidor responde con HTML (como el error 404 que tenías)
             const textError = await response.text();
-            console.error("Error 404/500 - El servidor no encontró la ruta:", textError);
-            return { success: false, message: "Ruta de actualización no encontrada en el servidor." };
+            console.error("Respuesta no JSON del servidor:", textError);
+            return { 
+                success: false, 
+                message: "El servidor no encontró la ruta de guardado. Revisa el despliegue en Render." 
+            };
         }
     } catch (error) {
         console.error("Error en updateUserProvider:", error);
-        return { success: false, message: "Error de conexión al intentar guardar cambios." };
+        return { success: false, message: "Error de conexión. Revisa tu internet." };
     }
 };
 

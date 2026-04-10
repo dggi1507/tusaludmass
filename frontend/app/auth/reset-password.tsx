@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+// 1. IMPORTA EL PROVIDER (Asegúrate de que la ruta sea correcta)
+import { resetPasswordProvider } from '../../src/services/authService'; 
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
-  const { email: paramEmail } = useLocalSearchParams(); // Captura el email si viene de la pantalla anterior
+  const { email: paramEmail } = useLocalSearchParams();
 
   const [email, setEmail] = useState(paramEmail?.toString() || '');
   const [token, setToken] = useState('');
@@ -13,19 +15,14 @@ export default function ResetPasswordScreen() {
 
   const handleResetPassword = async () => {
     if (!email || !token || !newPassword) {
-      Alert.alert("Campos incompletos", "Por favor, llena todos los datos para continuar.");
+      Alert.alert("Campos incompletos", "Por favor, llena todos los datos.");
       return;
     }
 
     setLoading(true);
     try {
-      const response = await fetch('https://tusaludmas.onrender.com/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, token, newPassword }),
-      });
-
-      const data = await response.json();
+      // 2. USA EL PROVIDER EN LUGAR DEL FETCH MANUAL
+      const data = await resetPasswordProvider(email, token, newPassword);
 
       if (data.success) {
         Alert.alert("¡Éxito!", "Tu contraseña ha sido actualizada correctamente.", [
@@ -35,7 +32,7 @@ export default function ResetPasswordScreen() {
         Alert.alert("Error", data.message || "El código es incorrecto o ha expirado.");
       }
     } catch (error) {
-      Alert.alert("Error de conexión", "Asegúrate de estar conectado a internet.");
+      Alert.alert("Error de conexión", "No se pudo conectar con el servidor.");
     } finally {
       setLoading(false);
     }
@@ -92,69 +89,15 @@ export default function ResetPasswordScreen() {
   );
 }
 
+// ... (Tus estilos se mantienen igual)
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    backgroundColor: '#fff',
-    padding: 25,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#002855', // Azul oscuro de tu marca
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#555',
-    textAlign: 'center',
-    marginBottom: 40,
-    lineHeight: 22,
-  },
-  form: {
-    width: '100%',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#002855',
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  input: {
-    backgroundColor: '#F0F4F8',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#D1D9E6',
-  },
-  tokenInput: {
-    textAlign: 'center',
-    letterSpacing: 8,
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#4A90E2',
-  },
-  button: {
-    backgroundColor: '#002855', // Color exacto de tu botón actual
-    padding: 18,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-    letterSpacing: 1,
-  },
+  container: { flexGrow: 1, backgroundColor: '#fff', padding: 25, justifyContent: 'center' },
+  title: { fontSize: 26, fontWeight: 'bold', color: '#002855', textAlign: 'center', marginBottom: 10 },
+  subtitle: { fontSize: 15, color: '#555', textAlign: 'center', marginBottom: 40, lineHeight: 22 },
+  form: { width: '100%' },
+  label: { fontSize: 14, fontWeight: '600', color: '#002855', marginBottom: 8, marginLeft: 4 },
+  input: { backgroundColor: '#F0F4F8', padding: 15, borderRadius: 10, marginBottom: 20, fontSize: 16, borderWidth: 1, borderColor: '#D1D9E6' },
+  tokenInput: { textAlign: 'center', letterSpacing: 8, fontSize: 22, fontWeight: 'bold', color: '#4A90E2' },
+  button: { backgroundColor: '#002855', padding: 18, borderRadius: 10, alignItems: 'center', marginTop: 15, elevation: 5 },
+  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
 });

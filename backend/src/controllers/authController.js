@@ -112,18 +112,48 @@ export const register = async (req, res) => {
     }
 };
 
-// ACTUALIZAR USUARIO
+// ACTUALIZAR USUARIO CON LOGS PARA DEPURACIÓN
 export const updateUser = (req, res) => {
-    const { id } = req.params; 
+    const { id } = req.params;
     const userData = req.body;
 
-    User.update(id, userData, (err, result) => {
-        if (err) return res.status(500).json({ success: false, message: 'Error al actualizar' });
-        if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'No encontrado' });
-        res.json({ success: true, message: 'Actualizado correctamente' });
-    });
-};
+    // --- LOGS DE ENTRADA ---
+    console.log("=== PETICIÓN DE ACTUALIZACIÓN ===");
+    console.log("ID recibido:", id);
+    console.log("Datos del Body:", JSON.stringify(userData, null, 2));
 
+    if (!userData || Object.keys(userData).length === 0) {
+        console.warn("Advertencia: Se recibió un body vacío");
+        return res.status(400).json({ success: false, message: 'No se recibieron datos para actualizar' });
+    }
+
+    try {
+        User.update(id, userData, (err, result) => {
+            if (err) {
+                // --- LOG DE ERROR DE DB ---
+                console.error('ERROR CRÍTICO EN MODELO (User.update):', err);
+                
+                // Enviamos el mensaje de error real para saber si es por 'username' o por conexión
+                return res.status(500).json({ 
+                    success: false, 
+                    message: 'Error en la base de datos: ' + err.message 
+                });
+            }
+
+            if (result.affectedRows === 0) {
+                console.warn(`No se encontró el usuario con ID: ${id}`);
+                return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+            }
+
+            console.log("✅ Usuario actualizado con éxito en la DB");
+            res.json({ success: true, message: 'Datos actualizados correctamente' });
+        });
+    } catch (error) {
+        // --- LOG DE ERROR INESPERADO ---
+        console.error('ERROR INESPERADO EN CONTROLLER:', error);
+        res.status(500).json({ success: false, message: 'Error inesperado: ' + error.message });
+    }
+};
 // RECUPERAR CONTRASEÑA
 export const forgotPassword = (req, res) => {
     const { email } = req.body;
@@ -154,21 +184,44 @@ export const forgotPassword = (req, res) => {
     });
 };
 
-// RESTABLECER CONTRASEÑA
+// RESTABLECER CONTRASEÑA CORREGIDO
 export const resetPassword = async (req, res) => {
+    // 1. Recibimos los datos (incluimos email por seguridad si tu modelo lo pide)
     const { token, newPassword } = req.body;
 
+    if (!token || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Faltan datos obligatorios' });
+    }
+
+    // 2. Buscamos al usuario por el token
     User.findByResetToken(token, async (err, user) => {
-        if (err || !user) return res.status(400).json({ success: false, message: 'Token inválido' });
+        // Si hay error de DB o el usuario no existe (token inválido/expirado)
+        if (err) {
+            console.error("Error en DB:", err);
+            return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+        }
+        
+        if (!user) {
+            return res.status(400).json({ success: false, message: 'El código es incorrecto o ha expirado' });
+        }
 
         try {
+            // 3. Encriptamos la nueva contraseña
             const hashedPassword = await bcrypt.hash(newPassword, 10);
+            
+            // 4. Actualizamos en la DB
             User.updatePassword(user.id, hashedPassword, (err) => {
-                if (err) return res.status(500).json({ success: false });
-                res.json({ success: true, message: 'Contraseña actualizada' });
+                if (err) {
+                    console.error("Error al actualizar pass:", err);
+                    return res.status(500).json({ success: false, message: 'No se pudo actualizar la contraseña' });
+                }
+                
+                // 5. RESPUESTA EXITOSA
+                res.json({ success: true, message: '¡Contraseña actualizada con éxito!' });
             });
         } catch (error) {
-            res.status(500).json({ success: false });
+            console.error("Error en el hash:", error);
+            res.status(500).json({ success: false, message: 'Error al procesar la contraseña' });
         }
     });
 };

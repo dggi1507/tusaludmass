@@ -258,4 +258,3 @@ export const getAdminSummary = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error al obtener resumen del administrador' });
   }
 };
-
