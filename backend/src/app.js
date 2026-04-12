@@ -10,6 +10,8 @@ import externalRoutes from './routes/externalRoutes.js';
 import reporteRoutes from './routes/reporteRoutes.js';
 const app = express();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 // Middlewares
 // Configuración de CORS para permitir conexiones externas (App móvil)
 app.use(cors({
@@ -35,6 +37,16 @@ app.use('/api/catalog', medicineRoutes);
 
 app.use('/api/external', externalRoutes);
 app.use('/api/reportes', reporteRoutes);
+
+// --- ESTO ES LO QUE SOLUCIONA EL "CANNOT GET /EPS" ---
+// Sirve los archivos de la carpeta 'dist' (donde vive tu página web)
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Maneja cualquier otra ruta para que Expo Router funcione en la web
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 // Ruta de prueba
 app.get('/api/saludo', (req, res) => {
   res.json({ mensaje: "Conexión exitosa desde el Backend de Node.js en Render" });
