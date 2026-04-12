@@ -12,7 +12,7 @@ export default function EpsPanel() {
             : { name: form.c_name, address: form.c_addr };
 
         try {
-            const res = await fetch(`http://localhost:3000/api/external/${endpoint}`, {
+            const res = await fetch(`https://tusaludmas.onrender.com/api/external/${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
