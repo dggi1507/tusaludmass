@@ -16,9 +16,10 @@ import reporteRoutes from './routes/reporteRoutes.js';
 const app = express();
 
 // Definimos la ruta del directorio actual de forma segura
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Middlewares
+// --- MIDDLEWARES ---
 app.use(cors({
   origin: '*', 
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -27,7 +28,8 @@ app.use(cors({
 
 app.use(express.json()); 
 
-// 1. RUTAS DE LA API
+// --- 1. RUTAS DE LA API ---
+// Es importante que las rutas de la API estén ANTES de servir la web
 app.use('/api', authRoutes);
 app.use('/api', dataRoutes);
 app.use('/api/patients', patientRoutes);
@@ -38,28 +40,34 @@ app.use('/api/catalog', medicineRoutes);
 app.use('/api/external', externalRoutes);
 app.use('/api/reportes', reporteRoutes);
 
-// 2. RUTA DE PRUEBA
+// Ruta de prueba para verificar salud de la API
 app.get('/api/saludo', (req, res) => {
   res.json({ mensaje: "Servidor funcionando correctamente" });
 });
 
-// 3. SERVIR ARCHIVOS ESTÁTICOS
-// Esto sirve el CSS, JS e imágenes de tu carpeta 'dist'
+// --- 2. SERVIR ARCHIVOS ESTÁTICOS ---
+// Esto permite que el navegador encuentre los archivos .js y .css de la web
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// 4. EL CAMBIO CLAVE: Manejador para la página web
-// Cambiamos '' por '(.)' para que sea compatible con la nueva versión
-app.get('/:any(.*)', (req, res) => {
-    // Si la ruta no empieza por /api, entregamos el index.html de la web
+// --- 3. MANEJADOR PARA LA PÁGINA WEB (Catch-all) ---
+// Usamos '*' para evitar el error PathError [TypeError]: Unexpected (
+app.get('*', (req, res) => {
+    // Si la ruta NO comienza con /api, entregamos el index.html de la web
     if (!req.path.startsWith('/api')) {
         res.sendFile(path.join(__dirname, '../dist/index.html'));
+    } else {
+        // Si alguien pide una ruta /api que no existe, devolvemos 404 en JSON
+        res.status(404).json({ success: false, message: 'Ruta de API no encontrada' });
     }
 });
 
-// Manejo de errores
+// --- 4. MANEJO GLOBAL DE ERRORES ---
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  console.error('Error en el servidor:', err.stack);
+  res.status(500).json({ 
+    success: false, 
+    message: 'Error interno del servidor: ' + err.message 
+  });
 });
 
 export default app;
