@@ -3,7 +3,7 @@ import cors from "cors";
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Importación de Rutas
+// --- IMPORTACIÓN DE RUTAS ---
 import authRoutes from './routes/authRoutes.js';
 import dataRoutes from './routes/dataRoutes.js';
 import patientRoutes from './routes/patientRoutes.js';
@@ -15,7 +15,16 @@ import reporteRoutes from './routes/reporteRoutes.js';
 
 const app = express();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Configuración de rutas de archivos para ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const _dirname = path.dirname(_filename);
+
+/**
+ * DEFINICIÓN DE LA RUTA DEL FRONTEND
+ * Sube dos niveles desde 'src' para llegar a la raíz del proyecto
+ * y luego entra en 'frontend/dist'
+ */
+const frontendPath = path.resolve(__dirname, '../../frontend/dist');
 
 // Middlewares
 app.use(cors({
@@ -26,40 +35,49 @@ app.use(cors({
 
 app.use(express.json()); 
 
-// 1. RUTAS DE LA API (Estas no dan error porque son rutas fijas)
+// --- RUTAS DE LA API ---
 app.use('/api', authRoutes);
 app.use('/api', dataRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/alarms', alarmRoutes);
 app.use('/api/medicines', medicineRoutes);
-app.use('/api/catalog', medicineRoutes);
 app.use('/api/external', externalRoutes);
 app.use('/api/reportes', reporteRoutes);
 
-// 2. RUTA DE PRUEBA
+// Ruta de prueba para verificar que el backend responde
 app.get('/api/saludo', (req, res) => {
-  res.json({ mensaje: "Servidor operativo" });
+  res.json({ mensaje: "Conexión exitosa con el Backend" });
 });
 
-// 3. SERVIR ARCHIVOS ESTÁTICOS
-app.use(express.static(path.join(__dirname, '../dist')));
+/**
+ * SERVIR FRONTEND WEB
+ */
+// 1. Servir los archivos estáticos (JS, CSS, imágenes) desde la carpeta dist
+app.use(express.static(frontendPath));
 
-// 4. --- SOLUCIÓN FINAL SIN REGEX ---
-// En lugar de usar '', '(.)' o ':any(.*)', usamos un middleware simple.
-// Si la petición llega hasta aquí y NO es una ruta de API, entregamos el index.html.
+// 2. Middleware de captura para SPA (Single Page Application)
+// Si la ruta no es de la API, entrega el index.html del frontend
 app.use((req, res, next) => {
   if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+    res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
+      if (err) {
+        // Si no encuentra el archivo, es que la carpeta 'dist' no se ha generado
+        res.status(404).send("Error: El frontend no ha sido compilado (Falta carpeta dist).");
+      }
+    });
   } else {
     next();
   }
 });
 
-// Manejo de errores
+// Manejo global de errores
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, message: 'Error interno' });
+  console.error('Error detectado:', err.stack);
+  res.status(500).json({ 
+    success: false, 
+    message: 'Error interno del servidor: ' + err.message 
+  });
 });
 
 export default app;
