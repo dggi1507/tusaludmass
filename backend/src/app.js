@@ -15,11 +15,9 @@ import reporteRoutes from './routes/reporteRoutes.js';
 
 const app = express();
 
-// Definimos la ruta del directorio actual de forma segura
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// --- 1. MIDDLEWARES ---
+// Middlewares
 app.use(cors({
   origin: '*', 
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -28,8 +26,7 @@ app.use(cors({
 
 app.use(express.json()); 
 
-// --- 2. RUTAS DE LA API ---
-// Importante: Deben ir antes de servir los archivos estáticos
+// 1. RUTAS DE LA API (Estas no dan error porque son rutas fijas)
 app.use('/api', authRoutes);
 app.use('/api', dataRoutes);
 app.use('/api/patients', patientRoutes);
@@ -40,34 +37,29 @@ app.use('/api/catalog', medicineRoutes);
 app.use('/api/external', externalRoutes);
 app.use('/api/reportes', reporteRoutes);
 
-// Ruta de saludo para pruebas rápidas
+// 2. RUTA DE PRUEBA
 app.get('/api/saludo', (req, res) => {
-  res.json({ mensaje: "Servidor funcionando correctamente" });
+  res.json({ mensaje: "Servidor operativo" });
 });
 
-// --- 3. SERVIR ARCHIVOS ESTÁTICOS ---
-// Esto sirve el CSS, JS e imágenes de tu carpeta 'dist'
+// 3. SERVIR ARCHIVOS ESTÁTICOS
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// --- 4. MANEJADOR PARA LA PÁGINA WEB (FIX) ---
-// Cambiamos '/:any(.*)' por '*' para evitar el PathError
-app.get('*', (req, res) => {
-    // Si la ruta NO comienza con /api, entregamos el index.html de la web
-    if (!req.path.startsWith('/api')) {
-        res.sendFile(path.join(__dirname, '../dist/index.html'));
-    } else {
-        // Si alguien pide algo en /api que no existe, enviamos 404 en JSON
-        res.status(404).json({ success: false, message: 'Ruta de API no encontrada' });
-    }
+// 4. --- SOLUCIÓN FINAL SIN REGEX ---
+// En lugar de usar '', '(.)' o ':any(.*)', usamos un middleware simple.
+// Si la petición llega hasta aquí y NO es una ruta de API, entregamos el index.html.
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  } else {
+    next();
+  }
 });
 
-// --- 5. MANEJO GLOBAL DE ERRORES ---
+// Manejo de errores
 app.use((err, req, res, next) => {
-  console.error('Error detectado:', err.stack);
-  res.status(500).json({ 
-    success: false, 
-    message: 'Error interno del servidor: ' + err.message 
-  });
+  console.error(err.stack);
+  res.status(500).json({ success: false, message: 'Error interno' });
 });
 
 export default app;
