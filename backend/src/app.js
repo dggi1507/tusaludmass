@@ -3,7 +3,7 @@ import cors from "cors";
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Rutas
+// Importación de Rutas
 import authRoutes from './routes/authRoutes.js';
 import dataRoutes from './routes/dataRoutes.js';
 import patientRoutes from './routes/patientRoutes.js';
@@ -15,9 +15,8 @@ import reporteRoutes from './routes/reporteRoutes.js';
 
 const app = express();
 
-// --- CORRECCIÓN AQUÍ: Definimos primero la ruta del archivo ---
-const __filename = fileURLToPath(import.meta.url); // Definimos filename
-const _dirname = path.dirname(_filename);      // Ahora sí usamos filename para sacar dirname
+// --- SOLUCIÓN DEFINITIVA PARA EL ERROR DE PATH ---
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Middlewares
 app.use(cors({
@@ -35,21 +34,32 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/alarms', alarmRoutes);
 app.use('/api/medicines', medicineRoutes);
+app.use('/api/catalog', medicineRoutes);
 app.use('/api/external', externalRoutes);
 app.use('/api/reportes', reporteRoutes);
 
-// Servir la página web (dist)
+/**
+ * SERVIR FRONTEND WEB
+ */
+// 1. Servir archivos estáticos
 app.use(express.static(path.join(__dirname, '../dist')));
 
+// 2. Ruta de prueba
 app.get('/api/saludo', (req, res) => {
-  res.json({ mensaje: "Conexión exitosa desde el Backend en Render" });
+  res.json({ mensaje: "Backend funcionando en Render" });
 });
 
-// Soluciona el error de "Cannot GET /eps" al recargar
+// 3. Manejador para la página web (SPA)
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
         res.sendFile(path.join(__dirname, '../dist/index.html'));
     }
+});
+
+// Manejo de errores
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ success: false, message: 'Error interno' });
 });
 
 export default app;
