@@ -49,7 +49,7 @@ app.use(express.static(path.join(__dirname, '../dist')));
 
 // 4. EL CAMBIO CLAVE: Manejador para la página web
 // Cambiamos '' por '(.)' para que sea compatible con la nueva versión
-app.get('(.*)', (req, res) => {
+app.get('/:any(.*)', (req, res) => {
     // Si la ruta no empieza por /api, entregamos el index.html de la web
     if (!req.path.startsWith('/api')) {
         res.sendFile(path.join(__dirname, '../dist/index.html'));
