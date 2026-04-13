@@ -8,10 +8,10 @@ export default function CuidadorLayout() {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       Alert.alert(
         'Cerrar sesión',
-        '¿Deseas salir de la aplicación?',
+        '¿Deseas cerrar sesión?',
         [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Salir', style: 'destructive', onPress: () => router.replace('/') },
+          { text: 'Cerrar sesión', style: 'destructive', onPress: () => router.replace('/') },
         ]
       );
       return true; // bloquea la navegación por defecto
