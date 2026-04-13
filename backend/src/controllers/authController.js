@@ -167,18 +167,28 @@ export const forgotPassword = (req, res) => {
         User.saveResetToken(user.id, token, expires, async (err) => {
             if (err) return res.status(500).json({ success: false });
 
+            // --- CAMBIO AQUÍ ---
             const msg = {
                 to: user.email,
-                from: 'tusaludmas8@gmail.com',
-                subject: 'Recuperación - Tu Salud +',
-                html: `<h2>Código: ${token}</h2>`
+                from: 'tuSalud+ <soporte@tusaludmas.me>', // Usa tu nuevo dominio autenticado
+                subject: 'Recuperación de Contraseña - tuSalud+',
+                html: `
+                    <div style="font-family: sans-serif; border: 1px solid #ddd; padding: 20px;">
+                        <h2>Hola, ${user.first_name || 'usuario'}</h2>
+                        <p>Has solicitado restablecer tu contraseña en <strong>tuSalud+</strong>.</p>
+                        <p>Tu código de seguridad es:</p>
+                        <h1 style="color: #2c3e50; letter-spacing: 5px;">${token}</h1>
+                        <p>Este código expirará en 1 hora.</p>
+                    </div>
+                `
             };
 
             try {
                 await sgMail.send(msg);
                 res.status(200).json({ success: true, message: 'Correo enviado' });
             } catch (error) {
-                res.status(500).json({ success: false });
+                console.error("Error enviando con SendGrid:", error.response ? error.response.body : error);
+                res.status(500).json({ success: false, message: 'No se pudo enviar el correo' });
             }
         });
     });
